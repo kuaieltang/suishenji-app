@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <title>随身记</title>
+    <meta name="theme-color" content="#cc7d5e" />
+    <meta name="description" content="打开就说的随身记：用输入法的语音键打字，次日自动上传到你的私有仓库" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/favicon-32.png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- 输入页：App 的唯一主页 -->
+      <section id="screen-input" class="screen">
+        <header class="bar">
+          <button id="btn-today" class="chip" type="button">今天 0 条</button>
+          <button id="btn-pending" class="chip chip--accent" type="button" hidden>待确认 0</button>
+          <span class="bar__spacer"></span>
+          <button id="btn-settings" class="chip chip--icon" type="button" aria-label="设置">⋯</button>
+        </header>
+        <textarea
+          id="editor"
+          class="editor"
+          placeholder="直接说，不用整理"
+          enterkeyhint="send"
+          autofocus
+          autocapitalize="sentences"
+          autocomplete="off"
+          spellcheck="false"
+        ></textarea>
+        <div class="inputbar">
+          <span class="hint">放下手机就自动保存</span>
+          <button id="btn-send" class="send" type="button">保存</button>
+        </div>
+      </section>
+
+      <!-- 回看页 -->
+      <section id="screen-read" class="screen" hidden>
+        <header class="bar">
+          <button class="chip chip--icon" data-action="back" type="button" aria-label="返回">←</button>
+          <span id="read-title" class="bar__title">今天</span>
+          <span class="bar__spacer"></span>
+          <button id="btn-refresh" class="chip chip--icon" type="button" aria-label="刷新">⟳</button>
+        </header>
+        <div id="read-days" class="days"></div>
+        <div class="scroll">
+          <p id="read-seal" class="notice" hidden></p>
+          <ul id="read-list" class="records"></ul>
+          <button id="btn-append" class="ghost ghost--wide" type="button" hidden>补记一条</button>
+          <section id="read-derived" hidden>
+            <h2 class="section-title">当天的整理</h2>
+            <div id="read-derived-body" class="markdown"></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- 待确认页 -->
+      <section id="screen-confirm" class="screen" hidden>
+        <header class="bar">
+          <button class="chip chip--icon" data-action="back" type="button" aria-label="返回">←</button>
+          <span class="bar__title">待确认</span>
+          <span class="bar__spacer"></span>
+          <button id="btn-sync" class="chip" type="button">同步</button>
+        </header>
+        <div class="scroll">
+          <p id="confirm-empty" class="notice notice--soft" hidden>没有需要确认的内容。</p>
+          <div id="confirm-list" class="cards"></div>
+        </div>
+      </section>
+
+      <!-- 设置页 -->
+      <section id="screen-settings" class="screen" hidden>
+        <header class="bar">
+          <button class="chip chip--icon" data-action="back" type="button" aria-label="返回">←</button>
+          <span class="bar__title">设置</span>
+        </header>
+        <div class="scroll">
+          <form id="settings-form" class="form">
+            <label class="field">
+              <span>GitHub 账号</span>
+              <input id="set-owner" class="input" autocomplete="off" autocapitalize="off" placeholder="你的用户名" />
+            </label>
+            <label class="field">
+              <span>仓库名</span>
+              <input id="set-repo" class="input" autocomplete="off" autocapitalize="off" placeholder="suishenji" />
+            </label>
+            <label class="field">
+              <span>分支</span>
+              <input id="set-branch" class="input" autocomplete="off" autocapitalize="off" placeholder="main" />
+            </label>
+            <label class="field">
+              <span>访问令牌</span>
+              <input id="set-token" class="input" type="password" autocomplete="off" placeholder="github_pat_…" />
+            </label>
+            <p class="muted small">
+              需要一个 fine-grained token，只勾选这一个仓库的 <b>Contents: Read and write</b>。
+              令牌只存在本机浏览器，只有 api.github.com 会收到它。
+            </p>
+            <button type="submit" class="primary primary--wide">保存并同步</button>
+          </form>
+
+          <section class="panel">
+            <h2 class="section-title">同步</h2>
+            <p id="set-status" class="muted small"></p>
+            <div class="row">
+              <button id="btn-upload-now" class="ghost" type="button">立即上传</button>
+              <button id="btn-seal-today" class="ghost" type="button">封存今天</button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2 class="section-title">关于</h2>
+            <p class="muted small">
+              原始记录只追加不修改：上传封存前可以随便改，封存之后要改只能追加一条"更正"。
+              数据格式见仓库里的 docs/contract.md。
+            </p>
+            <button id="btn-clear" class="danger" type="button">清空本机数据</button>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
