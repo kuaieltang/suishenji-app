@@ -58,7 +58,6 @@ const dom = {
   pending: byId('btn-pending'),
   pendingLabel: byId('pending-label'),
   focusFallback: byId('focus-fallback'),
-  focusStart: byId('btn-focus-start'),
   openSettings: byId('btn-settings'),
   readTitle: byId('read-title'),
   readDays: byId('read-days'),
@@ -99,6 +98,7 @@ const ui = {
   toastTimer: null,
   focusTimer: null,
   fallbackTimer: null,
+  focusFallbackDismissed: false,
 };
 
 let ghClient = null;
@@ -130,14 +130,21 @@ function keyboardLikelyOpen() {
   return window.innerHeight - viewport.height > 80;
 }
 
+function isTouchDevice() {
+  if ((globalThis.navigator?.maxTouchPoints ?? 0) > 0) return true;
+  return globalThis.matchMedia?.('(pointer: coarse)')?.matches ?? false;
+}
+
 function updateFocusFallback() {
   if (!dom.focusFallback) return;
-  const shouldShow = shouldShowFocusFallback({
-    screen: ui.screen,
-    focused: document.activeElement === dom.editor,
-    keyboardOpen: keyboardLikelyOpen(),
-    sheetOpen: Boolean(document.querySelector('.sheet')),
-  });
+  const shouldShow =
+    !ui.focusFallbackDismissed &&
+    shouldShowFocusFallback({
+      screen: ui.screen,
+      keyboardOpen: keyboardLikelyOpen(),
+      sheetOpen: Boolean(document.querySelector('.sheet')),
+      touch: isTouchDevice(),
+    });
   dom.focusFallback.hidden = !shouldShow;
 }
 
@@ -149,12 +156,14 @@ function ensureEditorFocus() {
   if (ui.screen !== 'input' || document.querySelector('.sheet')) return;
   clearTimeout(ui.focusTimer);
   clearTimeout(ui.fallbackTimer);
+  ui.focusFallbackDismissed = false;
   const delays = [0, 120, 400, 900];
   let index = 0;
   const attempt = () => {
     if (ui.screen !== 'input' || document.querySelector('.sheet')) return;
     focusEditor();
-    if (document.activeElement === dom.editor || keyboardLikelyOpen()) {
+    // 只有键盘真的弹出来才算成功：Chrome 会"聚焦成功但不弹键盘"
+    if (keyboardLikelyOpen()) {
       updateFocusFallback();
       return;
     }
@@ -924,12 +933,6 @@ function bindEvents() {
   if (dom.setFontFamily) dom.setFontFamily.addEventListener('change', changeFontFamily);
   if (dom.setFontSize) dom.setFontSize.addEventListener('click', changeFontSize);
   if (dom.toggleToken) dom.toggleToken.addEventListener('click', toggleTokenVisibility);
-  if (dom.focusStart) {
-    dom.focusStart.addEventListener('click', () => {
-      focusEditor();
-      updateFocusFallback();
-    });
-  }
   dom.uploadNow.addEventListener('click', uploadNow);
   dom.sealToday.addEventListener('click', sealToday);
   dom.clear.addEventListener('click', clearLocal);
@@ -965,6 +968,15 @@ function bindEvents() {
   dom.editor.addEventListener('focus', updateFocusFallback);
   dom.editor.addEventListener('blur', () => {
     setTimeout(updateFocusFallback, 300);
+  });
+  // 用户点了输入区（那一下本该把键盘唤出来）就收起提示，避免它一直赖着
+  dom.editor.addEventListener('pointerdown', () => {
+    ui.focusFallbackDismissed = true;
+    updateFocusFallback();
+  });
+  dom.editor.addEventListener('input', () => {
+    ui.focusFallbackDismissed = true;
+    updateFocusFallback();
   });
   if (globalThis.visualViewport) {
     globalThis.visualViewport.addEventListener('resize', updateFocusFallback);

@@ -372,18 +372,20 @@ export function fontScale(size) {
 }
 
 /**
- * 是否该显示"点一下开始说话"的兜底按钮。
+ * 是否该显示"点一下开始说话"的提示层。
  *
- * 只有在输入页、没有浮层、且判定键盘没弹出时才显示；系统放行自动弹键盘时它不该出现。
+ * 注意：只看键盘有没有真的弹出来。Android Chrome 会出现"输入框已聚焦但键盘不弹"
+ * 的情况，所以 focused 不能当作成功；只在触屏设备上提示，桌面浏览器不打扰。
  */
 export function shouldShowFocusFallback({
   screen = '',
-  focused = false,
   keyboardOpen = false,
   sheetOpen = false,
+  touch = false,
 } = {}) {
+  if (!touch) return false;
   if (screen !== 'input') return false;
   if (sheetOpen) return false;
-  if (focused || keyboardOpen) return false;
+  if (keyboardOpen) return false;
   return true;
 }

@@ -270,25 +270,25 @@ textarea {
   filter: brightness(1.05);
 }
 
-/* 键盘没弹出时的兜底：只盖住输入区，不挡顶栏与工具条 */
+/* 键盘没弹出时的提示层：盖住输入区但不吃点击，那一下直接落到输入框上 */
 .fallback {
-  flex: 0 0 auto;
-  padding: 0 1rem 0.5rem;
-}
-
-.fallback__button {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  top: calc(var(--safe-top) + 4.25rem);
+  bottom: calc(var(--safe-bottom) + 5.75rem);
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.25rem;
-  width: 100%;
-  padding: 1.25rem 1rem;
+  padding: 1rem;
   color: var(--ink);
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
   border: 1px dashed var(--accent);
   border-radius: var(--radius-lg);
-  font: inherit;
-  cursor: pointer;
+  text-align: center;
+  pointer-events: none;
 }
 
 .fallback__title {

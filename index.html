@@ -136,12 +136,11 @@
           spellcheck="false"
         ></textarea>
 
-        <div id="focus-fallback" class="fallback" hidden>
-          <button id="btn-focus-start" class="fallback__button" type="button">
-            <svg class="icon icon--large" aria-hidden="true"><use href="#i-keyboard"></use></svg>
-            <span class="fallback__title">点一下开始说话</span>
-            <span class="muted small">键盘没自动弹出，点这里一次就好</span>
-          </button>
+        <!-- 键盘没弹出时的提示层：不吃点击，用户那一下直接落在输入框上 -->
+        <div id="focus-fallback" class="fallback" aria-hidden="true" hidden>
+          <svg class="icon icon--large" aria-hidden="true"><use href="#i-keyboard"></use></svg>
+          <span class="fallback__title">点一下这里开始说话</span>
+          <span class="muted small">键盘没有自动弹出，点一下输入区就好</span>
         </div>
 
         <p class="hint">放下手机就自动保存</p>
