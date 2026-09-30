@@ -29,6 +29,7 @@ export const KEYS = {
 };
 
 export const DEFAULT_SETTINGS = {
+  provider: 'github',
   owner: '',
   repo: 'suishenji',
   branch: 'main',

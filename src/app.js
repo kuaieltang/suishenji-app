@@ -16,7 +16,7 @@ import {
   renderMarkdown,
   timeKey,
 } from './core.js';
-import { createGitHub } from './github.js';
+import { createRemote, providerInfo } from './remote.js';
 import { createStore } from './store.js';
 import { createSync } from './sync.js';
 
@@ -65,10 +65,12 @@ const dom = {
   confirmList: byId('confirm-list'),
   syncButton: byId('btn-sync'),
   form: byId('settings-form'),
+  setProvider: byId('set-provider'),
   setOwner: byId('set-owner'),
   setRepo: byId('set-repo'),
   setBranch: byId('set-branch'),
   setToken: byId('set-token'),
+  tokenHelp: byId('set-token-help'),
   status: byId('set-status'),
   uploadNow: byId('btn-upload-now'),
   sealToday: byId('btn-seal-today'),
@@ -124,7 +126,8 @@ function buildClient() {
     sync = null;
     return null;
   }
-  ghClient = createGitHub({
+  ghClient = createRemote({
+    provider: settings.provider,
     owner: settings.owner,
     repo: settings.repo,
     branch: settings.branch || 'main',
@@ -619,12 +622,26 @@ function handleConfirmClick(event) {
 
 // ------------------------------------------------------------------ 设置页
 
+/** 令牌输入框的提示随平台变化：GitHub 是 fine-grained token，Gitee 是私人令牌 */
+function applyProviderHints(provider) {
+  const info = providerInfo(provider);
+  if (dom.setToken) dom.setToken.placeholder = info.tokenPlaceholder;
+  if (dom.tokenHelp) {
+    dom.tokenHelp.textContent = `${info.tokenHelp}令牌只存在本机浏览器，只有 ${info.host} 的 API 会收到它。`;
+  }
+}
+
 function renderSettingsStatus() {
   const settings = store.settings();
+  const info = providerInfo(settings.provider);
   const status = store.status();
   const unsealed = store.daysToUpload();
   const parts = [];
-  parts.push(store.configured() ? `仓库：${settings.owner}/${settings.repo}@${settings.branch || 'main'}` : '还没配置仓库');
+  parts.push(
+    store.configured()
+      ? `仓库：${info.label} · ${settings.owner}/${settings.repo}@${settings.branch || 'main'}`
+      : '还没配置仓库'
+  );
   parts.push(status.lastSyncAt ? `上次同步：${status.lastSyncAt.replace('T', ' ')}` : '还没同步过');
   parts.push(unsealed.length ? `待上传：${unsealed.join('、')}` : '没有待上传的日子');
   if (status.lastError) parts.push(`上次错误：${status.lastError}`);
@@ -634,10 +651,12 @@ function renderSettingsStatus() {
 
 function openSettings() {
   const settings = store.settings();
+  if (dom.setProvider) dom.setProvider.value = providerInfo(settings.provider).id;
   dom.setOwner.value = settings.owner;
   dom.setRepo.value = settings.repo;
   dom.setBranch.value = settings.branch || 'main';
   dom.setToken.value = settings.token;
+  applyProviderHints(settings.provider);
   renderSettingsStatus();
   show('settings');
 }
@@ -645,11 +664,13 @@ function openSettings() {
 async function saveSettings(event) {
   event.preventDefault();
   store.saveSettings({
+    provider: dom.setProvider ? dom.setProvider.value : store.settings().provider,
     owner: dom.setOwner.value.trim(),
     repo: dom.setRepo.value.trim(),
     branch: dom.setBranch.value.trim() || 'main',
     token: dom.setToken.value.trim(),
   });
+  applyProviderHints(store.settings().provider);
   buildClient();
   refreshCounts();
   if (!sync) {
@@ -799,6 +820,7 @@ function bindEvents() {
   dom.confirmList.addEventListener('click', handleConfirmClick);
   dom.syncButton.addEventListener('click', uploadNow);
   dom.form.addEventListener('submit', saveSettings);
+  dom.setProvider.addEventListener('change', () => applyProviderHints(dom.setProvider.value));
   dom.uploadNow.addEventListener('click', uploadNow);
   dom.sealToday.addEventListener('click', sealToday);
   dom.clear.addEventListener('click', clearLocal);
@@ -852,7 +874,7 @@ function init() {
 
   if (!store.configured()) {
     openSettings();
-    toast('先填 GitHub 仓库和访问令牌', 3600);
+    toast('先选好托管平台，填上仓库与访问令牌', 3600);
     return;
   }
 

@@ -84,7 +84,15 @@
         <div class="scroll">
           <form id="settings-form" class="form">
             <label class="field">
-              <span>GitHub 账号</span>
+              <span>托管平台</span>
+              <select id="set-provider" class="input">
+                <option value="github">GitHub</option>
+                <option value="gitee">Gitee 码云（国内直连）</option>
+                <option value="gitcode">GitCode（国内直连）</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>账号 / 用户名</span>
               <input id="set-owner" class="input" autocomplete="off" autocapitalize="off" placeholder="你的用户名" />
             </label>
             <label class="field">
@@ -99,9 +107,8 @@
               <span>访问令牌</span>
               <input id="set-token" class="input" type="password" autocomplete="off" placeholder="github_pat_…" />
             </label>
-            <p class="muted small">
-              需要一个 fine-grained token，只勾选这一个仓库的 <b>Contents: Read and write</b>。
-              令牌只存在本机浏览器，只有 api.github.com 会收到它。
+            <p id="set-token-help" class="muted small">
+              令牌只存在本机浏览器，只有你所选平台的 API 会收到它。
             </p>
             <button type="submit" class="primary primary--wide">保存并同步</button>
           </form>
