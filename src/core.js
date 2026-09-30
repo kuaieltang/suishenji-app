@@ -298,6 +298,17 @@ export function stripDailySeconds(markdown) {
   return String(markdown ?? '').replace(/^(- )(\d{2}:\d{2}):\d{2} /gm, '$1$2 ');
 }
 
+/** 把日报拆成「整理主体」与「原始记录」两段，后者单独成节显示。 */
+export function splitDailySections(markdown) {
+  const text = String(markdown ?? '');
+  const match = /^#{1,6}\s*原始记录\s*$/m.exec(text);
+  if (!match) return { main: text.trim(), raw: '' };
+  return {
+    main: text.slice(0, match.index).trim(),
+    raw: text.slice(match.index + match[0].length).trim(),
+  };
+}
+
 export function relativeDayLabel(date, today) {
   if (date === today) return '今天';
   const yesterday = new Date(`${today}T12:00:00`);
@@ -475,6 +486,12 @@ export function renderMarkdown(markdown) {
 export const FONT_FAMILIES = {
   system:
     'system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+  misans:
+    '"MiSans", "MiSans VF", "MiSans GB", "Mi Sans", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif',
+  lxgw:
+    '"LXGW Bright GB Light", "LXGW Bright GB", "LXGWBrightGB", "霞鹜文楷 GB Light", "LXGW WenKai", "霞鹜文楷", "Kaiti SC", KaiTi, serif',
+  kaiti: '"Kaiti SC", KaiTi, "楷体", STKaiti, "华文楷体", serif',
+  songti: '"Songti SC", SimSun, "宋体", STSong, "华文宋体", serif',
   serif: '"Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", SimSun, serif',
   mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono CJK SC", monospace',
 };

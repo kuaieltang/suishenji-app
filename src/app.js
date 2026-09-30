@@ -24,6 +24,7 @@ import {
   shortDateTime,
   shortDateLabel,
   shortTime,
+  splitDailySections,
   stripDailySeconds,
   stripDailyHeading,
   timeKey,
@@ -72,7 +73,9 @@ const dom = {
   readDate: byId('read-date'),
   readChip: byId('read-chip'),
   readPick: byId('btn-pick-date'),
-  derivedLabel: byId('read-derived-label'),
+  derivedLabel: byId('read-derived-date'),
+  raw: byId('read-raw'),
+  rawBody: byId('read-raw-body'),
   readDays: byId('read-days'),
   readSeal: byId('read-seal'),
   readList: byId('read-list'),
@@ -331,7 +334,7 @@ function renderRead() {
   if (dom.readDate) dom.readDate.textContent = fullDateLabel(date);
   if (dom.readChip) dom.readChip.textContent = relativeDayLabel(date, today);
   if (dom.derivedLabel) {
-    dom.derivedLabel.textContent = `当天的整理 · ${date.slice(5)} ${weekdayLabel(date)}`.trim();
+    dom.derivedLabel.textContent = `${date.slice(5)} ${weekdayLabel(date)}`.trim();
   }
   if (dom.readCount) {
     dom.readCount.textContent = records.length ? String(records.length) : daily ? '—' : '0';
@@ -369,7 +372,9 @@ function renderRead() {
       daily ? '原始记录不在本机，下面是当天整理好的日报。' : '这一天还没有记录。'
     }</li>`;
   } else {
-    dom.readList.innerHTML = records
+    // 最新的排在前面
+    dom.readList.innerHTML = [...records]
+      .sort((left, right) => (left.time < right.time ? 1 : left.time > right.time ? -1 : 0))
       .map(
         (record) => `<li class="line" data-uuid="${record.uuid}">
           <span class="line__time">${shortTime(record.time)}</span>
@@ -402,19 +407,17 @@ function escapeText(text) {
 async function loadDerived(date) {
   const cached = store.dailyCache()[date];
   if (cached) {
-    dom.derivedBody.innerHTML = renderMarkdown(
-      stripDailySeconds(stripDailyHeading(cached, date))
-    );
+    renderDaily(date, cached);
   } else {
     dom.derivedBody.innerHTML = '<p class="empty">这天还没有整理好的日报。</p>';
+    dom.derived.classList.add('is-empty');
+    if (dom.raw) dom.raw.hidden = true;
   }
   if (!sync) return;
   try {
     const markdown = await sync.fetchDaily(date);
     if (markdown && ui.derivedDate === date) {
-      dom.derivedBody.innerHTML = renderMarkdown(
-        stripDailySeconds(stripDailyHeading(markdown, date))
-      );
+      renderDaily(date, markdown);
     }
   } catch (error) {
     if (!cached) {
@@ -423,6 +426,22 @@ async function loadDerived(date) {
       )}</p>`;
     }
   }
+}
+
+/** 渲染某天的整理：主体与原始记录分成两张左右结构的卡片。 */
+function renderDaily(date, markdown) {
+  const { main, raw } = splitDailySections(
+    stripDailySeconds(stripDailyHeading(markdown, date))
+  );
+  const hasMain = Boolean(main.trim());
+  dom.derivedBody.innerHTML = hasMain
+    ? renderMarkdown(main)
+    : '<p class="empty">这天还没有整理好的日报。</p>';
+  dom.derived.classList.toggle('is-empty', !hasMain);
+
+  const hasRaw = Boolean(raw.trim());
+  if (dom.raw) dom.raw.hidden = !hasRaw;
+  if (dom.rawBody) dom.rawBody.innerHTML = hasRaw ? renderMarkdown(raw) : '';
 }
 
 function openRead(date = dateKey()) {
@@ -772,7 +791,15 @@ function applyProviderHints(provider) {
 }
 
 const FONT_SIZE_LABELS = { small: '小', normal: '标准', large: '大', xlarge: '特大' };
-const FONT_FAMILY_LABELS = { system: '系统默认', serif: '衬线', mono: '等宽' };
+const FONT_FAMILY_LABELS = {
+  system: '系统默认',
+  misans: 'MiSans',
+  lxgw: '霞鹜文楷',
+  kaiti: '楷体',
+  songti: '宋体',
+  serif: '衬线',
+  mono: '等宽',
+};
 const SETTINGS_TITLES = { menu: '设置', repo: '仓库连接', display: '显示', sync: '同步', about: '关于' };
 
 function renderSettingsStatus() {

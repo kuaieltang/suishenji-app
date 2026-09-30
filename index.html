@@ -25,6 +25,12 @@
           var stacks = {
             system:
               'system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+            misans:
+              '"MiSans", "MiSans VF", "MiSans GB", "Mi Sans", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif',
+            lxgw:
+              '"LXGW Bright GB Light", "LXGW Bright GB", "LXGWBrightGB", "霞鹜文楷 GB Light", "LXGW WenKai", "霞鹜文楷", "Kaiti SC", KaiTi, serif',
+            kaiti: '"Kaiti SC", KaiTi, "楷体", STKaiti, "华文楷体", serif',
+            songti: '"Songti SC", SimSun, "宋体", STSong, "华文宋体", serif',
             serif: '"Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", SimSun, serif',
             mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono CJK SC", monospace'
           };
@@ -210,9 +216,19 @@
             <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>补记一条
           </button>
 
-          <p id="read-derived-label" class="section-label">当天的整理</p>
-          <section id="read-derived" class="card" hidden>
-            <div id="read-derived-body" class="markdown"></div>
+          <section id="read-derived" class="card card--split" hidden>
+            <div class="split__side">
+              <span class="split__title">当天的整理</span>
+              <span id="read-derived-date" class="split__meta">今天</span>
+            </div>
+            <div id="read-derived-body" class="split__main markdown"></div>
+          </section>
+
+          <section id="read-raw" class="card card--split" hidden>
+            <div class="split__side">
+              <span class="split__title">原始记录</span>
+            </div>
+            <div id="read-raw-body" class="split__main markdown"></div>
           </section>
         </div>
       </section>
@@ -316,6 +332,10 @@
             <span>字体</span>
             <select id="set-font-family" class="input">
               <option value="system">系统默认（无衬线）</option>
+                <option value="misans">MiSans（小米开源）</option>
+                <option value="lxgw">霞鹜文楷 Bright GB Light</option>
+                <option value="kaiti">楷体</option>
+                <option value="songti">宋体</option>
               <option value="serif">衬线（宋体一类）</option>
               <option value="mono">等宽</option>
             </select>
@@ -328,7 +348,9 @@
               <button class="segmented__item" type="button" data-size="large">大</button>
               <button class="segmented__item" type="button" data-size="xlarge">特大</button>
             </div>
-            <p class="muted small">输入框与日记正文一起缩放，随时可改。</p>
+            <p class="muted small">
+              输入框与日记正文一起缩放，随时可改。MiSans、霞鹜文楷、楷体、宋体需要设备本身装了这个字体，没装会自动回退到系统字体。
+            </p>
           </div>
         </div>
 
