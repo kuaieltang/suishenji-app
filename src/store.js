@@ -178,6 +178,9 @@ export function createStore(storage = createStorage()) {
       cache[date] = markdown;
       write(KEYS.daily, cache);
     },
+    replaceDailyCache(cache) {
+      return write(KEYS.daily, cache ?? {});
+    },
 
     // ---------------------------------------------------------------- 设置与状态
     settings: () => ({ ...DEFAULT_SETTINGS, ...read(KEYS.settings, {}) }),

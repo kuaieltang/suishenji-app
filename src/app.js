@@ -12,10 +12,13 @@ import {
   fontStack,
   formatClock,
   formatStatus,
+  fullDateLabel,
   makeConfirmation,
   pendingItems,
+  recentDates,
   relativeDayLabel,
   renderMarkdown,
+  shortDateLabel,
   timeKey,
 } from './core.js';
 import { createRemote, providerInfo } from './remote.js';
@@ -57,6 +60,9 @@ const dom = {
   pendingLabel: byId('pending-label'),
   openSettings: byId('btn-settings'),
   readTitle: byId('read-title'),
+  readCount: byId('read-count'),
+  readDate: byId('read-date'),
+  readChip: byId('read-chip'),
   readDays: byId('read-days'),
   readSeal: byId('read-seal'),
   readList: byId('read-list'),
@@ -280,12 +286,12 @@ function bindEditor() {
 // ------------------------------------------------------------------ 回看页
 
 function dateChips() {
-  const today = dateKey();
-  const dates = new Set([today]);
-  for (const [date, records] of Object.entries(store.records())) {
-    if ((records ?? []).length) dates.add(date);
-  }
-  return [...dates].sort().reverse().slice(0, MAX_DAY_CHIPS);
+  return recentDates({
+    records: store.records(),
+    daily: store.dailyCache(),
+    today: dateKey(),
+    max: MAX_DAY_CHIPS,
+  });
 }
 
 function renderRead() {
@@ -293,15 +299,21 @@ function renderRead() {
   const date = ui.readDate;
   const sealed = store.isSealed(date);
   const records = store.dayRecords(date);
+  const daily = store.dailyCache()[date] ?? '';
 
-  dom.readTitle.textContent = `${relativeDayLabel(date, today)} · ${date}`;
+  dom.readTitle.textContent = date === today ? '今天的记录' : `${shortDateLabel(date, today)}的记录`;
+  if (dom.readDate) dom.readDate.textContent = fullDateLabel(date);
+  if (dom.readChip) dom.readChip.textContent = relativeDayLabel(date, today);
+  if (dom.readCount) {
+    dom.readCount.textContent = records.length ? String(records.length) : daily ? '—' : '0';
+  }
 
   dom.readDays.innerHTML = dateChips()
     .map(
       (item) =>
         `<button class="day" type="button" data-date="${item}" aria-current="${
           item === date ? 'true' : 'false'
-        }">${relativeDayLabel(item, today)}</button>`
+        }">${shortDateLabel(item, today)}</button>`
     )
     .join('');
 
@@ -310,30 +322,32 @@ function renderRead() {
     const when = formatClock(info.uploadedAt ?? '');
     const grown = records.length > Number(info.count ?? 0);
     dom.readSeal.textContent = grown
-      ? `已封存${when ? ` · ${when} 上传` : ''}，之后又新增了 ${
+      ? `已封存${when ? ` · ${when} 上传` : ''}，之后新增 ${
           records.length - Number(info.count ?? 0)
-        } 条，下次打开会自动补传。`
+        } 条`
       : `已封存${when ? ` · ${when} 上传` : ''}${
           info.count ? ` · ${info.count} 条` : ''
-        }。要改只能追加一条"更正"。`;
-    dom.readSeal.hidden = false;
+        }`;
   } else if (date < today) {
-    dom.readSeal.textContent = '还没上传。下次打开这个 App 时会自动上传并封存。';
-    dom.readSeal.hidden = false;
+    dom.readSeal.textContent = '还没上传 · 下次打开自动补传';
   } else {
-    dom.readSeal.textContent = '今天的内容还没封存，随时可以改。';
-    dom.readSeal.hidden = false;
+    dom.readSeal.textContent = '未封存 · 随时可以改';
   }
+  dom.readSeal.hidden = false;
 
   if (!records.length) {
-    dom.readList.innerHTML = '<li class="empty">这一天还没有记录。</li>';
+    dom.readList.innerHTML = `<li class="empty">${
+      daily ? '原始记录不在本机，下面是当天整理好的日报。' : '这一天还没有记录。'
+    }</li>`;
   } else {
     dom.readList.innerHTML = records
       .map(
-        (record) => `<li class="record" data-uuid="${record.uuid}">
-          <span class="record__time">${record.time}</span>
-          <p class="record__text">${escapeText(record.text)}</p>
-          <button class="record__more" type="button" data-action="record-menu" aria-label="更多">⋯</button>
+        (record) => `<li class="line" data-uuid="${record.uuid}">
+          <span class="line__time">${record.time}</span>
+          <p class="line__text">${escapeText(record.text)}</p>
+          <button class="line__more" type="button" data-action="record-menu" aria-label="更多">
+            <svg class="icon" aria-hidden="true"><use href="#i-more"></use></svg>
+          </button>
         </li>`
       )
       .join('');
@@ -913,6 +927,19 @@ function bindEvents() {
   if (dom.settingsSheet) {
     dom.settingsSheet.addEventListener('click', (event) => {
       if (event.target === dom.settingsSheet) closeSettingsSheet();
+    });
+    // 输入框聚焦后滚进可视区，避免软键盘把它挡住
+    dom.settingsSheet.addEventListener('focusin', (event) => {
+      const field = event.target;
+      if (!field || typeof field.matches !== 'function') return;
+      if (!field.matches('input, select, textarea')) return;
+      setTimeout(() => {
+        try {
+          field.scrollIntoView({ block: 'center' });
+        } catch {
+          /* 老浏览器忽略即可 */
+        }
+      }, 250);
     });
   }
 

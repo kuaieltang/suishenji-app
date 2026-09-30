@@ -128,6 +128,10 @@
         <circle cx="12" cy="5" r="1" />
         <circle cx="12" cy="19" r="1" />
       </symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24">
+        <path d="M5 12h14" />
+        <path d="M12 5v14" />
+      </symbol>
     </svg>
 
     <div class="app">
@@ -166,6 +170,7 @@
           <span class="toolbar__gap"></span>
           <button id="btn-today" class="count" type="button">
             <span id="today-label">今天 0 条</span>
+            <svg class="icon count__chevron" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
           </button>
         </div>
       </section>
@@ -176,7 +181,7 @@
           <button class="icon-button" data-action="back" type="button" aria-label="返回">
             <svg class="icon" aria-hidden="true"><use href="#i-back"></use></svg>
           </button>
-          <span id="read-title" class="bar__title">今天</span>
+          <span id="read-title" class="bar__title">今天的记录</span>
           <span class="bar__spacer"></span>
           <button id="btn-refresh" class="icon-button" type="button" aria-label="刷新">
             <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
@@ -184,11 +189,26 @@
         </header>
         <div id="read-days" class="days"></div>
         <div class="scroll">
-          <p id="read-seal" class="notice" hidden></p>
-          <ul id="read-list" class="records"></ul>
-          <button id="btn-append" class="ghost ghost--wide" type="button" hidden>补记一条</button>
-          <section id="read-derived" class="panel panel--flush" hidden>
-            <h2 class="panel__title">当天的整理</h2>
+          <section class="summary">
+            <span id="read-count" class="summary__count">0</span>
+            <span class="summary__meta">
+              <span id="read-date" class="summary__date">今天</span>
+              <span id="read-seal" class="summary__state">未封存 · 随时可改</span>
+            </span>
+            <span class="bar__spacer"></span>
+            <span id="read-chip" class="summary__chip">今天</span>
+          </section>
+
+          <p class="section-label">今天说的</p>
+          <div class="card card--list">
+            <ul id="read-list" class="lines"></ul>
+          </div>
+          <button id="btn-append" class="append" type="button" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>补记一条
+          </button>
+
+          <p class="section-label">当天的整理</p>
+          <section id="read-derived" class="card" hidden>
             <div id="read-derived-body" class="markdown"></div>
           </section>
         </div>

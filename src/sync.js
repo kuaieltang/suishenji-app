@@ -5,6 +5,7 @@
  */
 
 import {
+  DAILY_CACHE_DAYS,
   confirmJsonlFor,
   dateKey,
   groupByDate,
@@ -13,6 +14,7 @@ import {
   mergeRecords,
   parseMarkdown,
   parseMetaJsonl,
+  pruneDailyCache,
   recordsToFiles,
 } from './core.js';
 
@@ -141,6 +143,27 @@ export function createSync({ store, github, now = () => new Date() } = {}) {
     return file.text;
   }
 
+  /**
+   * 拉取最近 DAILY_CACHE_DAYS 天的日报到本地，供离线回看；
+   * 单天失败只跳过，最后把窗口外的旧缓存裁掉。
+   */
+  async function fetchRecentDaily(today = dateKey(now())) {
+    const cursor = new Date(`${today}T12:00:00`);
+    for (let index = 0; index < DAILY_CACHE_DAYS; index += 1) {
+      const date = dateKey(cursor);
+      try {
+        const file = await github.getFile(`${DAILY_DIR}/${date}.md`);
+        if (file.exists && file.text) store.saveDailyCache(date, file.text);
+      } catch {
+        /* 单天读取失败不影响整次同步 */
+      }
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    const pruned = pruneDailyCache(store.dailyCache(), today);
+    store.replaceDailyCache(pruned);
+    return Object.keys(pruned).length;
+  }
+
   /** 打开 App 或回到前台时调用：上传已结束的日子与确认答复，再拉取待确认清单。 */
   async function syncNow({ today = dateKey(now()) } = {}) {
     if (!store.configured()) return { ok: false, reason: 'not-configured' };
@@ -148,6 +171,7 @@ export function createSync({ store, github, now = () => new Date() } = {}) {
       const uploaded = await uploadPendingDays(today);
       const confirmations = await uploadConfirmations();
       await fetchPending();
+      await fetchRecentDaily(today);
       store.saveStatus({
         lastSyncAt: isoWithOffset(now()),
         lastError: '',
@@ -167,6 +191,7 @@ export function createSync({ store, github, now = () => new Date() } = {}) {
     uploadConfirmations,
     fetchPending,
     fetchDaily,
+    fetchRecentDaily,
     syncNow,
   };
 }

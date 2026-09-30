@@ -285,6 +285,61 @@ export function relativeDayLabel(date, today) {
   return date.slice(5);
 }
 
+// ------------------------------------------------------------------ 日期展示与本地缓存窗口
+
+const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+/** 2026-09-30 → 周三 */
+export function weekdayLabel(date) {
+  const parsed = new Date(`${date}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return WEEKDAYS[parsed.getDay()] ?? '';
+}
+
+/** 完整日期：2026-09-30 周三 */
+export function fullDateLabel(date) {
+  const weekday = weekdayLabel(date);
+  return weekday ? `${date} ${weekday}` : String(date ?? '');
+}
+
+/** 日期条上的短标签：今天 / 昨天 / 9-28 周一 */
+export function shortDateLabel(date, today) {
+  const relative = relativeDayLabel(date, today);
+  if (relative === '今天' || relative === '昨天') return relative;
+  const weekday = weekdayLabel(date);
+  return weekday ? `${relative} ${weekday}` : relative;
+}
+
+/** 本地日报缓存保留的天数 */
+export const DAILY_CACHE_DAYS = 7;
+
+/**
+ * 日期条要显示的日期：本机有原始记录的日子 ∪ 缓存里有日报的日子 ∪ 今天。
+ * 倒序、去重、最多 max 个。
+ */
+export function recentDates({ records = {}, daily = {}, today = '', max = 8 } = {}) {
+  const dates = new Set();
+  if (today) dates.add(today);
+  for (const [date, list] of Object.entries(records ?? {})) {
+    if ((list ?? []).length) dates.add(date);
+  }
+  for (const date of Object.keys(daily ?? {})) dates.add(date);
+  return [...dates].filter(Boolean).sort().reverse().slice(0, max);
+}
+
+/** 只保留最近 days 天的日报缓存，返回新对象（不改原对象）。 */
+export function pruneDailyCache(cache = {}, today = '', days = DAILY_CACHE_DAYS) {
+  if (!today) return { ...(cache ?? {}) };
+  const limit = new Date(`${today}T12:00:00`);
+  limit.setDate(limit.getDate() - (days - 1));
+  const oldest = dateKey(limit);
+  const next = {};
+  for (const [date, text] of Object.entries(cache ?? {})) {
+    if (date >= oldest && date <= today) next[date] = text;
+  }
+  return next;
+}
+
 function escapeHtml(text) {
   return String(text ?? '')
     .replace(/&/g, '&amp;')

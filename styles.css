@@ -259,14 +259,23 @@ textarea {
 .count {
   display: inline-flex;
   align-items: center;
+  gap: 0.125rem;
   min-height: 2.75rem;
-  padding: 0 0.25rem;
+  padding: 0 0.125rem;
   color: var(--muted);
   background: none;
   border: 0;
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
   cursor: pointer;
+}
+
+.count__chevron {
+  width: 0.875rem;
+  height: 0.875rem;
+  opacity: 0.7;
+  stroke-width: 2.2;
 }
 
 .send {
@@ -311,20 +320,20 @@ textarea {
 
 .day {
   flex: 0 0 auto;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
+  padding: 0.375rem 0.75rem;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
   border-radius: 999px;
-  padding: 0.375rem 0.8125rem;
   font: inherit;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: background-color 160ms ease-out, border-color 160ms ease-out;
+  transition: background-color 160ms ease-out, color 160ms ease-out;
 }
 
 .day[aria-current='true'] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  color: var(--accent-ink);
+  background: var(--accent);
   font-weight: 600;
 }
 
@@ -344,49 +353,129 @@ textarea {
   text-align: center;
 }
 
-.records {
+/* 回看页：概要卡 + 紧凑列表 */
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.summary__count {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.summary__date {
+  font-size: 0.875rem;
+  color: var(--ink);
+}
+
+.summary__state {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.summary__chip {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.6875rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.section-label {
+  margin: 1.125rem 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.card--list {
+  padding: 0.25rem 0.875rem;
+}
+
+.lines {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.record {
+.line {
   display: flex;
   align-items: flex-start;
   gap: 0.625rem;
-  padding: 0.6875rem 0.125rem;
+  padding: 0.6875rem 0;
   border-bottom: 1px solid var(--line);
 }
 
-.record__time {
+.line:last-child {
+  border-bottom: 0;
+}
+
+.line__time {
   flex: 0 0 auto;
+  width: 3.75rem;
+  padding-top: 0.2rem;
   color: var(--muted);
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
-  padding-top: 0.125rem;
 }
 
-.record__text {
+.line__text {
   flex: 1 1 auto;
   margin: 0;
-  font-size: calc(17px * var(--font-scale));
-  line-height: 1.75;
+  font-size: calc(16px * var(--font-scale));
+  line-height: 1.7;
   color: var(--ink-soft);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.record__more {
+/* 更多按钮固定在行尾，正文再长也不会把它推走 */
+.line__more {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
   width: 2rem;
   height: 2rem;
-  margin-top: -0.25rem;
+  margin-left: auto;
   border: 0;
   background: transparent;
   color: var(--muted);
   border-radius: 999px;
+  cursor: pointer;
+}
+
+.append {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  width: 100%;
+  margin-top: 0.625rem;
+  padding: 0.625rem 0;
+  color: var(--muted);
+  background: transparent;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  font: inherit;
+  font-size: 0.875rem;
   cursor: pointer;
 }
 
@@ -651,8 +740,11 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
-  max-height: 85dvh;
+  /* 用百分比而不是 dvh：软键盘弹出时布局视口会收缩，百分比跟着收缩，
+     而 dvh 不会，会导致面板底部被键盘挡住。 */
+  max-height: 88%;
   overflow-y: auto;
+  scroll-padding-bottom: 1rem;
 }
 
 .sheet__head {
