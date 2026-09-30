@@ -276,6 +276,28 @@ export function formatClock(isoString) {
   return match ? `${match[1]}:${match[2]}` : '';
 }
 
+/** 界面上的时间一律只到分钟：`09:12:45` → `09:12`。 */
+export function shortTime(time) {
+  const match = /^(\d{2}:\d{2})(?::\d{2})?$/.exec(String(time ?? '').trim());
+  return match ? match[1] : String(time ?? '');
+}
+
+/** `2026-09-30T09:41:21+08:00` → `2026-09-30 09:41` */
+export function shortDateTime(isoString) {
+  const text = String(isoString ?? '');
+  const date = /(\d{4}-\d{2}-\d{2})/.exec(text)?.[1] ?? '';
+  const time = formatClock(text);
+  return [date, time].filter(Boolean).join(' ');
+}
+
+/**
+ * 日报里的「原始记录」一行形如 `- 00:10:48 正文`，显示时把秒去掉；
+ * 只动行首的这个时间，正文里其他时间样文本保持原样。
+ */
+export function stripDailySeconds(markdown) {
+  return String(markdown ?? '').replace(/^(- )(\d{2}:\d{2}):\d{2} /gm, '$1$2 ');
+}
+
 export function relativeDayLabel(date, today) {
   if (date === today) return '今天';
   const yesterday = new Date(`${today}T12:00:00`);

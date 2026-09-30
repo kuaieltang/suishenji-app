@@ -21,7 +21,10 @@ import {
   relativeDayLabel,
   renderMarkdown,
   shiftMonth,
+  shortDateTime,
   shortDateLabel,
+  shortTime,
+  stripDailySeconds,
   stripDailyHeading,
   timeKey,
   weekdayLabel,
@@ -369,7 +372,7 @@ function renderRead() {
     dom.readList.innerHTML = records
       .map(
         (record) => `<li class="line" data-uuid="${record.uuid}">
-          <span class="line__time">${record.time}</span>
+          <span class="line__time">${shortTime(record.time)}</span>
           <p class="line__text">${escapeText(record.text)}</p>
           <button class="line__more" type="button" data-action="record-menu" aria-label="更多">
             <svg class="icon" aria-hidden="true"><use href="#i-more"></use></svg>
@@ -399,7 +402,9 @@ function escapeText(text) {
 async function loadDerived(date) {
   const cached = store.dailyCache()[date];
   if (cached) {
-    dom.derivedBody.innerHTML = renderMarkdown(stripDailyHeading(cached, date));
+    dom.derivedBody.innerHTML = renderMarkdown(
+      stripDailySeconds(stripDailyHeading(cached, date))
+    );
   } else {
     dom.derivedBody.innerHTML = '<p class="empty">这天还没有整理好的日报。</p>';
   }
@@ -407,7 +412,9 @@ async function loadDerived(date) {
   try {
     const markdown = await sync.fetchDaily(date);
     if (markdown && ui.derivedDate === date) {
-      dom.derivedBody.innerHTML = renderMarkdown(stripDailyHeading(markdown, date));
+      dom.derivedBody.innerHTML = renderMarkdown(
+        stripDailySeconds(stripDailyHeading(markdown, date))
+      );
     }
   } catch (error) {
     if (!cached) {
@@ -527,9 +534,7 @@ function openRecordMenu(date, record) {
   const sealed = store.isSealed(date);
   openSheet((host) => {
     host.innerHTML = `
-      <p class="sheet__title">${record.time} · ${escapeText(
-        record.text.slice(0, 40)
-      )}${record.text.length > 40 ? '…' : ''}</p>
+      <p class="sheet__title">${shortTime(record.time)}</p>
       ${sealed ? '' : '<button class="sheet__action" type="button" data-role="edit">编辑</button>'}
       <button class="sheet__action" type="button" data-role="correct">追加更正</button>
       ${
@@ -573,12 +578,12 @@ function openRecordMenu(date, record) {
 
     if (role === 'correct') {
       openTextSheet({
-        title: `更正 ${date} ${record.time}`,
+        title: `更正 ${date} ${shortTime(record.time)}`,
         placeholder: '正确的说法，例如：买菜实际花了 320 元',
         onSave: (text) => {
           const body = foldText(text);
           if (!body) return;
-          store.addRecord(`更正 ${date} ${record.time}：${body}`, new Date(), record.uuid);
+          store.addRecord(`更正 ${date} ${shortTime(record.time)}：${body}`, new Date(), record.uuid);
           refreshCounts();
           scheduleSync(1200);
           toast('已作为今天的更正记录保存');
@@ -781,7 +786,7 @@ function renderSettingsStatus() {
       ? `仓库：${info.label} · ${settings.owner}/${settings.repo}@${settings.branch || 'main'}`
       : '还没配置仓库'
   );
-  parts.push(status.lastSyncAt ? `上次同步：${status.lastSyncAt.replace('T', ' ')}` : '还没同步过');
+  parts.push(status.lastSyncAt ? `上次同步：${shortDateTime(status.lastSyncAt)}` : '还没同步过');
   parts.push(unsealed.length ? `待上传：${unsealed.join('、')}` : '没有待上传的日子');
   if (status.lastError) parts.push(`上次错误：${status.lastError}`);
   if (dom.status) dom.status.textContent = parts.join('\n');
