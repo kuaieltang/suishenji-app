@@ -22,7 +22,8 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --font-scale: 1;
-  --font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+  /* 记录内容用的字体（设置页可换）；界面其它部分固定用系统字体 */
+  --content-font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
     "Microsoft YaHei", sans-serif;
   color-scheme: light dark;
 }
@@ -62,7 +63,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-family);
+  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
   font-size: calc(16px * var(--font-scale));
   line-height: 1.6;
   -webkit-text-size-adjust: 100%;
@@ -239,6 +241,13 @@ textarea {
 
 .editor::placeholder {
   color: var(--muted);
+}
+
+/* 只有记录内容跟随所选字体：输入框、今天说的正文、整理与原始记录的右列 */
+.editor,
+.line__text,
+.section-row__body {
+  font-family: var(--content-font);
 }
 
 .toolbar {
@@ -538,48 +547,78 @@ textarea {
   padding: 0.75rem;
 }
 
-/* 当天的整理 / 原始记录：与「今天说的」同构的左右结构 */
-.card--split {
+/* 当天的整理 / 原始记录：一张卡片内「左小节名 / 右内容」逐行排列 */
+.section-card {
+  padding: 0.25rem 0.875rem;
+}
+
+.section-row {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
-  padding: 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--line);
 }
 
-.card--split + .card--split {
-  margin-top: 0.625rem;
+.section-row:last-child {
+  border-bottom: 0;
 }
 
-.split__side {
-  flex: 0 0 4rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  color: var(--muted);
+.section-row__side {
+  flex: 0 0 3.5rem;
+  padding-top: 0.125rem;
   font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
   line-height: 1.5;
 }
 
-.split__title {
-  font-weight: 600;
-}
-
-.split__meta {
+.section-row__side--time {
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
 
-.split__main {
+.section-row__body {
   flex: 1 1 auto;
   min-width: 0;
 }
 
-.split__main > :first-child {
+.section-row__body > :first-child {
   margin-top: 0;
 }
 
-.is-empty .split__side,
-.is-empty .split__main {
-  color: var(--muted);
+.section-row__body > :last-child {
+  margin-bottom: 0;
+}
+
+/* 字体全量下载的状态与进度 */
+.font-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.font-status p {
+  margin: 0;
+}
+
+.font-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.font-progress > span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  transition: width 160ms ease-out;
 }
 
 /* ------------------------------------------------------------------ 月历 */

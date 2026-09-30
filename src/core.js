@@ -309,6 +309,60 @@ export function splitDailySections(markdown) {
   };
 }
 
+/**
+ * 把日报按 `## ` 小节切开，返回 [{ title, body }] 与单独的原始记录段。
+ * 顺序保持文件里的原样（关系 / 健康 / 成长 / 杂记 / 财务摘要 / 备注）。
+ */
+export function parseDailySections(markdown) {
+  const sections = [];
+  let current = null;
+  let rawLines = [];
+  let inRaw = false;
+
+  for (const line of String(markdown ?? '').split('\n')) {
+    const heading = /^##\s+(.*)$/.exec(line.trim());
+    if (heading) {
+      const title = heading[1].trim();
+      if (title === '原始记录') {
+        inRaw = true;
+        current = null;
+        continue;
+      }
+      inRaw = false;
+      current = { title, lines: [] };
+      sections.push(current);
+      continue;
+    }
+    if (inRaw) rawLines.push(line);
+    else if (current) current.lines.push(line);
+  }
+
+  return {
+    sections: sections.map((section) => ({
+      title: section.title,
+      body: section.lines.join('\n').trim(),
+    })),
+    raw: rawLines.join('\n').trim(),
+  };
+}
+
+/** 从字体 CSS 里取出去重后的分片地址（保持出现顺序，忽略空值）。 */
+export function parseFontSliceUrls(cssText) {
+  const urls = [];
+  const seen = new Set();
+  const pattern = /url\(\s*['"]?([^'")]+)['"]?\s*\)/g;
+  let match = pattern.exec(String(cssText ?? ''));
+  while (match) {
+    const value = match[1].trim();
+    if (value && !seen.has(value)) {
+      seen.add(value);
+      urls.push(value);
+    }
+    match = pattern.exec(String(cssText ?? ''));
+  }
+  return urls;
+}
+
 export function relativeDayLabel(date, today) {
   if (date === today) return '今天';
   const yesterday = new Date(`${today}T12:00:00`);

@@ -38,7 +38,7 @@
           };
           var scales = { small: 0.92, normal: 1, large: 1.12, xlarge: 1.24 };
           var root = document.documentElement;
-          root.style.setProperty('--font-family', stacks[settings.fontFamily] || stacks.system);
+          root.style.setProperty('--content-font', stacks[settings.fontFamily] || stacks.system);
           root.style.setProperty('--font-scale', String(scales[settings.fontSize] || 1));
         } catch (error) {
           /* 读不到就按默认字号渲染 */
@@ -218,19 +218,14 @@
             <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>补记一条
           </button>
 
-          <section id="read-derived" class="card card--split" hidden>
-            <div class="split__side">
-              <span class="split__title">当天的整理</span>
-              <span id="read-derived-date" class="split__meta">今天</span>
-            </div>
-            <div id="read-derived-body" class="split__main markdown"></div>
+          <p id="read-derived-label" class="section-label" hidden>当天的整理</p>
+          <section id="read-derived" class="card section-card" hidden>
+            <div id="read-derived-body"></div>
           </section>
 
-          <section id="read-raw" class="card card--split" hidden>
-            <div class="split__side">
-              <span class="split__title">原始记录</span>
-            </div>
-            <div id="read-raw-body" class="split__main markdown"></div>
+          <p id="read-raw-label" class="section-label" hidden>原始记录</p>
+          <section id="read-raw" class="card section-card" hidden>
+            <div id="read-raw-body"></div>
           </section>
         </div>
       </section>
@@ -350,8 +345,14 @@
               <button class="segmented__item" type="button" data-size="large">大</button>
               <button class="segmented__item" type="button" data-size="xlarge">特大</button>
             </div>
+            <div id="font-status" class="font-status" hidden>
+              <p id="font-status-text" class="muted small"></p>
+              <div id="font-progress" class="font-progress" hidden><span id="font-progress-bar"></span></div>
+              <button id="btn-font-retry" class="ghost" type="button" hidden>重新下载</button>
+            </div>
             <p class="muted small">
-              输入框与日记正文一起缩放，随时可改。MiSans、霞鹜文楷、楷体、宋体需要设备本身装了这个字体，没装会自动回退到系统字体。
+              字体只作用于记录内容（输入框、今天说的、当天的整理、原始记录），菜单与按钮保持系统字体；
+              选 MiSans 或霞鹜文楷会一次性把整套字体下载到本地。
             </p>
           </div>
         </div>

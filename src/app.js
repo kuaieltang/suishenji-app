@@ -16,6 +16,8 @@ import {
   fullDateLabel,
   makeConfirmation,
   monthGrid,
+  parseDailySections,
+  parseFontSliceUrls,
   pendingItems,
   recentDates,
   relativeDayLabel,
@@ -73,9 +75,15 @@ const dom = {
   readDate: byId('read-date'),
   readChip: byId('read-chip'),
   readPick: byId('btn-pick-date'),
-  derivedLabel: byId('read-derived-date'),
+  derivedLabel: byId('read-derived-label'),
+  rawLabel: byId('read-raw-label'),
   raw: byId('read-raw'),
   rawBody: byId('read-raw-body'),
+  fontStatus: byId('font-status'),
+  fontStatusText: byId('font-status-text'),
+  fontProgress: byId('font-progress'),
+  fontProgressBar: byId('font-progress-bar'),
+  fontRetry: byId('btn-font-retry'),
   readDays: byId('read-days'),
   readSeal: byId('read-seal'),
   readList: byId('read-list'),
@@ -131,6 +139,7 @@ const ui = {
   settingsView: 'menu',
   calYear: 0,
   calMonth: 1,
+  fontDownload: { active: false, percent: 0, failed: false },
 };
 
 let ghClient = null;
@@ -333,9 +342,6 @@ function renderRead() {
   dom.readTitle.textContent = date === today ? '今天的记录' : `${shortDateLabel(date, today)}的记录`;
   if (dom.readDate) dom.readDate.textContent = fullDateLabel(date);
   if (dom.readChip) dom.readChip.textContent = relativeDayLabel(date, today);
-  if (dom.derivedLabel) {
-    dom.derivedLabel.textContent = `${date.slice(5)} ${weekdayLabel(date)}`.trim();
-  }
   if (dom.readCount) {
     dom.readCount.textContent = records.length ? String(records.length) : daily ? '—' : '0';
   }
@@ -406,13 +412,7 @@ function escapeText(text) {
 
 async function loadDerived(date) {
   const cached = store.dailyCache()[date];
-  if (cached) {
-    renderDaily(date, cached);
-  } else {
-    dom.derivedBody.innerHTML = '<p class="empty">这天还没有整理好的日报。</p>';
-    dom.derived.classList.add('is-empty');
-    if (dom.raw) dom.raw.hidden = true;
-  }
+  renderDaily(date, cached || '');
   if (!sync) return;
   try {
     const markdown = await sync.fetchDaily(date);
@@ -421,27 +421,68 @@ async function loadDerived(date) {
     }
   } catch (error) {
     if (!cached) {
-      dom.derivedBody.innerHTML = `<p class="empty">读取失败：${escapeText(
+      dom.derivedBody.innerHTML = `<div class="section-row"><div class="section-row__body markdown"><p class="empty">读取失败：${escapeText(
         shortError(error?.message ?? error)
-      )}</p>`;
+      )}</p></div></div>`;
     }
   }
 }
 
-/** 渲染某天的整理：主体与原始记录分成两张左右结构的卡片。 */
+/** 渲染某天的整理：小节名在左、内容在右；原始记录单独成节。 */
 function renderDaily(date, markdown) {
-  const { main, raw } = splitDailySections(
-    stripDailySeconds(stripDailyHeading(markdown, date))
-  );
-  const hasMain = Boolean(main.trim());
-  dom.derivedBody.innerHTML = hasMain
-    ? renderMarkdown(main)
-    : '<p class="empty">这天还没有整理好的日报。</p>';
-  dom.derived.classList.toggle('is-empty', !hasMain);
+  const cleaned = stripDailySeconds(stripDailyHeading(String(markdown ?? ''), date));
+  const { sections, raw } = parseDailySections(cleaned);
 
-  const hasRaw = Boolean(raw.trim());
-  if (dom.raw) dom.raw.hidden = !hasRaw;
-  if (dom.rawBody) dom.rawBody.innerHTML = hasRaw ? renderMarkdown(raw) : '';
+  if (dom.derivedLabel) {
+    dom.derivedLabel.hidden = false;
+    dom.derivedLabel.textContent = `当天的整理 · ${date.slice(5)} ${weekdayLabel(date)}`.trim();
+  }
+  dom.derived.hidden = false;
+  dom.derivedBody.innerHTML = sections.length
+    ? sections
+        .map(
+          (section) => `<div class="section-row">
+            <span class="section-row__side">${escapeText(section.title)}</span>
+            <div class="section-row__body markdown">${
+              section.body
+                ? renderMarkdown(section.body)
+                : '<p class="empty">（当天没有这一类的记录）</p>'
+            }</div>
+          </div>`
+        )
+        .join('')
+    : '<div class="section-row"><div class="section-row__body markdown"><p class="empty">这天还没有整理好的日报。</p></div></div>';
+
+  const rawRows = parseRawRows(raw);
+  if (dom.rawLabel) dom.rawLabel.hidden = !rawRows.length;
+  if (dom.raw) dom.raw.hidden = !rawRows.length;
+  if (dom.rawBody) {
+    dom.rawBody.innerHTML = rawRows
+      .map(
+        (row) => `<div class="section-row">
+          <span class="section-row__side section-row__side--time">${escapeText(row.time)}</span>
+          <div class="section-row__body markdown">${renderMarkdown(row.text)}</div>
+        </div>`
+      )
+      .join('');
+  }
+}
+
+/** 原始记录是 markdown 列表：`- HH:MM:SS 正文`，拆成左时间 / 右内容。 */
+function parseRawRows(raw) {
+  const rows = [];
+  for (const line of String(raw ?? '').split('\n')) {
+    const item = /^[-*]\s+(.*)$/.exec(line.trim());
+    if (!item) continue;
+    const text = item[1].trim();
+    const timed = /^(\d{1,2}:\d{2}(?::\d{2})?)\s+(.*)$/.exec(text);
+    rows.push(
+      timed
+        ? { time: shortTime(timed[1].padStart(5, '0')), text: timed[2] }
+        : { time: '', text }
+    );
+  }
+  return rows;
 }
 
 function openRead(date = dateKey()) {
@@ -850,6 +891,7 @@ function openSettingsSheet(view = 'menu') {
   applyProviderHints(settings.provider);
   applyDisplaySettings();
   renderSettingsStatus();
+  renderFontStatus();
   dom.settingsSheet.hidden = false;
   showSettingsView(target);
 }
@@ -874,7 +916,7 @@ function closeSettingsSheet() {
 function applyDisplaySettings() {
   const settings = store.settings();
   const root = document.documentElement;
-  root.style.setProperty('--font-family', fontStack(settings.fontFamily));
+  root.style.setProperty('--content-font', fontStack(settings.fontFamily));
   root.style.setProperty('--font-scale', String(fontScale(settings.fontSize)));
   if (dom.setFontFamily) dom.setFontFamily.value = settings.fontFamily;
   if (dom.setFontSize) {
@@ -886,9 +928,11 @@ function applyDisplaySettings() {
 
 function changeFontFamily() {
   if (!dom.setFontFamily) return;
-  store.saveSettings({ fontFamily: dom.setFontFamily.value });
+  const family = dom.setFontFamily.value;
+  store.saveSettings({ fontFamily: family });
   applyDisplaySettings();
   renderSettingsStatus();
+  ensureFontDownloaded(family);
 }
 
 function changeFontSize(event) {
@@ -909,6 +953,102 @@ function toggleTokenVisibility() {
   dom.toggleToken.innerHTML = `<svg class="icon" aria-hidden="true"><use href="#${
     reveal ? 'i-eye-off' : 'i-eye'
   }"></use></svg>`;
+}
+
+// ------------------------------------------------------------------ 字体全量下载
+
+const FONT_ASSETS = {
+  misans: { label: 'MiSans', css: './fonts/misans/misans-regular.css', size: '1.9 MB' },
+  lxgw: { label: '霞鹜文楷 Bright', css: './fonts/lxgw/lxgw-bright.css', size: '3.3 MB' },
+};
+
+function fontCache() {
+  const settings = store.settings();
+  return settings.fontCache && typeof settings.fontCache === 'object' ? settings.fontCache : {};
+}
+
+/** 设置页里的状态行：未下载 / 下载中（带进度）/ 已完整下载 / 失败可重试。 */
+function renderFontStatus() {
+  if (!dom.fontStatus) return;
+  const family = store.settings().fontFamily;
+  const asset = FONT_ASSETS[family];
+  if (!asset) {
+    dom.fontStatus.hidden = true;
+    return;
+  }
+  dom.fontStatus.hidden = false;
+  const { active, percent, failed } = ui.fontDownload;
+  if (active) {
+    dom.fontStatusText.textContent = `${asset.label} 正在下载到本地… ${percent}%（${asset.size}）`;
+    dom.fontProgress.hidden = false;
+    dom.fontProgressBar.style.width = `${percent}%`;
+    dom.fontRetry.hidden = true;
+    return;
+  }
+  dom.fontProgress.hidden = true;
+  if (failed) {
+    dom.fontStatusText.textContent = `${asset.label} 下载未完成，可以重试（${asset.size}）`;
+    dom.fontRetry.hidden = false;
+    dom.fontRetry.textContent = '重新下载';
+    return;
+  }
+  if (fontCache()[family]) {
+    dom.fontStatusText.textContent = `${asset.label} 已完整下载 ✓（${asset.size}），不会重复下载`;
+    dom.fontRetry.hidden = true;
+    return;
+  }
+  dom.fontStatusText.textContent = `${asset.label} 还没下载到本地（${asset.size}）`;
+  dom.fontRetry.hidden = false;
+  dom.fontRetry.textContent = '下载整套字体';
+}
+
+/** 把整套字体的全部分片抓到本地（浏览器缓存），全部成功才算完成。 */
+async function ensureFontDownloaded(family, force = false) {
+  const asset = FONT_ASSETS[family];
+  if (!asset || ui.fontDownload.active) {
+    renderFontStatus();
+    return;
+  }
+  if (!force && fontCache()[family] === true) {
+    renderFontStatus();
+    return;
+  }
+
+  ui.fontDownload = { active: true, percent: 0, failed: false };
+  renderFontStatus();
+  let failed = 0;
+  try {
+    const cssUrl = new URL(asset.css, document.baseURI).href;
+    const response = await fetch(cssUrl);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const urls = parseFontSliceUrls(await response.text()).map(
+      (raw) => new URL(raw, cssUrl).href
+    );
+    if (!urls.length) throw new Error('字体清单为空');
+
+    const queue = [...urls];
+    let done = 0;
+    const worker = async () => {
+      while (queue.length) {
+        const url = queue.shift();
+        try {
+          const slice = await fetch(url, { cache: 'force-cache' });
+          if (!slice.ok) failed += 1;
+        } catch {
+          failed += 1;
+        }
+        done += 1;
+        ui.fontDownload.percent = Math.round((done / urls.length) * 100);
+        renderFontStatus();
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(5, urls.length) }, worker));
+    store.saveSettings({ fontCache: { ...fontCache(), [family]: failed === 0 } });
+    ui.fontDownload = { active: false, percent: 100, failed: failed > 0 };
+  } catch {
+    ui.fontDownload = { active: false, percent: 0, failed: true };
+  }
+  renderFontStatus();
 }
 
 async function saveSettings(event) {
@@ -1135,6 +1275,11 @@ function bindEvents() {
   dom.form.addEventListener('submit', saveSettings);
   dom.setProvider.addEventListener('change', () => applyProviderHints(dom.setProvider.value));
   if (dom.setFontFamily) dom.setFontFamily.addEventListener('change', changeFontFamily);
+  if (dom.fontRetry) {
+    dom.fontRetry.addEventListener('click', () =>
+      ensureFontDownloaded(store.settings().fontFamily, true)
+    );
+  }
   if (dom.setFontSize) dom.setFontSize.addEventListener('click', changeFontSize);
   if (dom.toggleToken) dom.toggleToken.addEventListener('click', toggleTokenVisibility);
   dom.uploadNow.addEventListener('click', uploadNow);

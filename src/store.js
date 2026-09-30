@@ -36,6 +36,7 @@ export const DEFAULT_SETTINGS = {
   token: '',
   fontFamily: 'system',
   fontSize: 'normal',
+  fontCache: {},
 };
 
 export function memoryStorage() {
