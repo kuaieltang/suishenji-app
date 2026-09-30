@@ -5,11 +5,13 @@
  */
 
 // 版本号变了才会清掉旧缓存；改动前端文件时顺手加一。
-const CACHE = 'suishenji-v10';
+const CACHE = 'suishenji-v11';
 const SHELL = [
   './',
   './index.html',
   './styles.css',
+  './fonts/misans/misans-regular.css',
+  './fonts/lxgw/lxgw-bright.css',
   './manifest.webmanifest',
   './src/app.js',
   './src/core.js',
