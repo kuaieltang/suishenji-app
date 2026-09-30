@@ -4,7 +4,8 @@
  * 明确不缓存任何跨域请求——远端托管（GitHub / Gitee / GitCode）的 API 响应必须实时，绝不进缓存。
  */
 
-const CACHE = 'suishenji-v1';
+// 版本号变了才会清掉旧缓存；改动前端文件时顺手加一。
+const CACHE = 'suishenji-v2';
 const SHELL = [
   './',
   './index.html',
