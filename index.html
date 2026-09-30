@@ -116,16 +116,12 @@
       <symbol id="i-chevron-down" viewBox="0 0 24 24">
         <path d="m6 9 6 6 6-6" />
       </symbol>
-      <symbol id="i-keyboard" viewBox="0 0 24 24">
-        <path d="M10 8h.01" />
-        <path d="M12 12h.01" />
-        <path d="M14 8h.01" />
-        <path d="M16 12h.01" />
-        <path d="M18 8h.01" />
-        <path d="M6 8h.01" />
-        <path d="M7 16h10" />
-        <path d="M8 12h.01" />
-        <rect width="20" height="16" x="2" y="4" rx="2" />
+      <symbol id="i-note" viewBox="0 0 24 24">
+        <rect x="4.5" y="3.5" width="15" height="17" rx="3.5" />
+        <path d="M8.5 9h7" />
+        <path d="M8.5 12h7" />
+        <path d="M8.5 15h3.5" />
+        <circle cx="16" cy="15.5" r="1.1" />
       </symbol>
       <symbol id="i-more" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="1" />
@@ -138,7 +134,10 @@
       <!-- 输入页：App 的唯一主页 -->
       <section id="screen-input" class="screen">
         <header class="bar">
-          <span class="bar__brand"><span class="bar__dot" aria-hidden="true"></span>随身记</span>
+          <span class="bar__brand">
+            <svg class="brand-icon" aria-hidden="true"><use href="#i-note"></use></svg>
+            随身记
+          </span>
           <span class="bar__spacer"></span>
           <button id="btn-pending" class="pill pill--accent" type="button" hidden>
             <svg class="icon" aria-hidden="true"><use href="#i-bell"></use></svg>
@@ -159,13 +158,6 @@
           autocomplete="off"
           spellcheck="false"
         ></textarea>
-
-        <!-- 键盘没弹出时的提示层：不吃点击，用户那一下直接落在输入框上 -->
-        <div id="focus-fallback" class="fallback" aria-hidden="true" hidden>
-          <svg class="icon icon--large" aria-hidden="true"><use href="#i-keyboard"></use></svg>
-          <span class="fallback__title">点一下这里开始说话</span>
-          <span class="muted small">键盘没有自动弹出，点一下输入区就好</span>
-        </div>
 
         <div class="toolbar">
           <button id="btn-send" class="send" type="button">

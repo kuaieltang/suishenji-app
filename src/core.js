@@ -371,21 +371,3 @@ export function fontScale(size) {
   return FONT_SIZES[size] ?? 1;
 }
 
-/**
- * 是否该显示"点一下开始说话"的提示层。
- *
- * 注意：只看键盘有没有真的弹出来。Android Chrome 会出现"输入框已聚焦但键盘不弹"
- * 的情况，所以 focused 不能当作成功；只在触屏设备上提示，桌面浏览器不打扰。
- */
-export function shouldShowFocusFallback({
-  screen = '',
-  keyboardOpen = false,
-  sheetOpen = false,
-  touch = false,
-} = {}) {
-  if (!touch) return false;
-  if (screen !== 'input') return false;
-  if (sheetOpen) return false;
-  if (keyboardOpen) return false;
-  return true;
-}

@@ -94,12 +94,6 @@ textarea {
   stroke-linejoin: round;
 }
 
-.icon--large {
-  width: 1.75rem;
-  height: 1.75rem;
-  stroke-width: 1.6;
-}
-
 .app {
   position: fixed;
   inset: 0;
@@ -148,18 +142,23 @@ textarea {
 .bar__brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  font-size: 0.78125rem;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  color: var(--muted);
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink);
 }
 
-.bar__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
+.brand-icon {
+  width: 1.375rem;
+  height: 1.375rem;
+  flex: 0 0 auto;
+  color: var(--accent);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .bar__spacer {
@@ -291,32 +290,6 @@ textarea {
 .send:active {
   transform: scale(0.95);
   filter: brightness(1.05);
-}
-
-/* 键盘没弹出时的提示层：盖住输入区但不吃点击，那一下直接落到输入框上 */
-.fallback {
-  position: absolute;
-  left: 0.75rem;
-  right: 0.75rem;
-  top: calc(var(--safe-top) + 4.25rem);
-  bottom: calc(var(--safe-bottom) + 4.5rem);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  padding: 1rem;
-  color: var(--ink);
-  background: color-mix(in srgb, var(--surface) 78%, transparent);
-  border: 1px dashed var(--accent);
-  border-radius: var(--radius-lg);
-  text-align: center;
-  pointer-events: none;
-}
-
-.fallback__title {
-  font-size: 0.9375rem;
-  font-weight: 600;
 }
 
 /* ------------------------------------------------------------------ 通用列表 */

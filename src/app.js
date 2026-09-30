@@ -16,7 +16,6 @@ import {
   pendingItems,
   relativeDayLabel,
   renderMarkdown,
-  shouldShowFocusFallback,
   timeKey,
 } from './core.js';
 import { createRemote, providerInfo } from './remote.js';
@@ -56,7 +55,6 @@ const dom = {
   todayLabel: byId('today-label'),
   pending: byId('btn-pending'),
   pendingLabel: byId('pending-label'),
-  focusFallback: byId('focus-fallback'),
   openSettings: byId('btn-settings'),
   readTitle: byId('read-title'),
   readDays: byId('read-days'),
@@ -105,8 +103,6 @@ const ui = {
   syncTimer: null,
   toastTimer: null,
   focusTimer: null,
-  fallbackTimer: null,
-  focusFallbackDismissed: false,
   settingsView: 'menu',
 };
 
@@ -121,7 +117,6 @@ function show(name) {
     element.hidden = key !== name;
   }
   if (name === 'input') ensureEditorFocus();
-  updateFocusFallback();
 }
 
 function focusEditor() {
@@ -139,54 +134,26 @@ function keyboardLikelyOpen() {
   return window.innerHeight - viewport.height > 80;
 }
 
-function isTouchDevice() {
-  // 只看主指针：手机是 coarse，带鼠标/触控板的触摸屏笔记本是 fine，不该被打扰
-  const coarse = globalThis.matchMedia?.('(pointer: coarse)');
-  if (coarse) return coarse.matches;
-  return (globalThis.navigator?.maxTouchPoints ?? 0) > 0;
-}
-
-function updateFocusFallback() {
-  if (!dom.focusFallback) return;
-  const shouldShow =
-    !ui.focusFallbackDismissed &&
-    shouldShowFocusFallback({
-      screen: ui.screen,
-      keyboardOpen: keyboardLikelyOpen(),
-      sheetOpen: Boolean(document.querySelector('.sheet:not([hidden])')),
-      touch: isTouchDevice(),
-    });
-  dom.focusFallback.hidden = !shouldShow;
-}
-
 /**
- * 让键盘尽量随打开一起弹出：多次重试，成功即停手。
- * 移动端浏览器禁止无手势弹键盘时，由兜底按钮接住那一次点击。
+ * 让键盘尽量随打开一起弹出：多次重试，键盘一弹出就停手。
+ * 浏览器若因为"没有用户手势"而拒绝，不做任何提示——用户点一下输入框即可。
  */
 function ensureEditorFocus() {
   if (ui.screen !== 'input' || document.querySelector('.sheet:not([hidden])')) return;
   clearTimeout(ui.focusTimer);
-  clearTimeout(ui.fallbackTimer);
-  ui.focusFallbackDismissed = false;
   const delays = [0, 120, 400, 900];
   let index = 0;
   const attempt = () => {
     if (ui.screen !== 'input' || document.querySelector('.sheet:not([hidden])')) return;
     focusEditor();
     // 只有键盘真的弹出来才算成功：Chrome 会"聚焦成功但不弹键盘"
-    if (keyboardLikelyOpen()) {
-      updateFocusFallback();
-      return;
-    }
+    if (keyboardLikelyOpen()) return;
     index += 1;
     if (index < delays.length) {
       ui.focusTimer = setTimeout(attempt, delays[index] - delays[index - 1]);
-    } else {
-      updateFocusFallback();
     }
   };
   attempt();
-  ui.fallbackTimer = setTimeout(updateFocusFallback, 1000);
 }
 
 function toast(message, duration = 2600) {
@@ -422,7 +389,6 @@ function openRead(date = dateKey()) {
 
 function closeSheet() {
   for (const sheet of document.querySelectorAll('.sheet--dynamic')) sheet.remove();
-  updateFocusFallback();
 }
 
 function openSheet(builder) {
@@ -774,12 +740,10 @@ function showSettingsView(view) {
   for (const element of dom.settingsViews) {
     element.hidden = element.dataset.view !== view;
   }
-  updateFocusFallback();
 }
 
 function closeSettingsSheet() {
   if (dom.settingsSheet) dom.settingsSheet.hidden = true;
-  updateFocusFallback();
   refreshCounts();
   if (ui.screen === 'input') ensureEditorFocus();
 }
@@ -1031,29 +995,12 @@ function bindEvents() {
     'pointerdown',
     () => {
       if (ui.screen === 'input' && document.activeElement !== dom.editor) focusEditor();
-      updateFocusFallback();
     },
     { passive: true }
   );
 
   window.addEventListener('pageshow', () => ensureEditorFocus());
   window.addEventListener('focus', () => ensureEditorFocus());
-  dom.editor.addEventListener('focus', updateFocusFallback);
-  dom.editor.addEventListener('blur', () => {
-    setTimeout(updateFocusFallback, 300);
-  });
-  // 用户点了输入区（那一下本该把键盘唤出来）就收起提示，避免它一直赖着
-  dom.editor.addEventListener('pointerdown', () => {
-    ui.focusFallbackDismissed = true;
-    updateFocusFallback();
-  });
-  dom.editor.addEventListener('input', () => {
-    ui.focusFallbackDismissed = true;
-    updateFocusFallback();
-  });
-  if (globalThis.visualViewport) {
-    globalThis.visualViewport.addEventListener('resize', updateFocusFallback);
-  }
 }
 
 function registerServiceWorker() {
