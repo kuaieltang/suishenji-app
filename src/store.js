@@ -34,6 +34,8 @@ export const DEFAULT_SETTINGS = {
   repo: 'suishenji',
   branch: 'main',
   token: '',
+  fontFamily: 'system',
+  fontSize: 'normal',
 };
 
 export function memoryStorage() {

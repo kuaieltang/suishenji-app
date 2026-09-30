@@ -8,12 +8,15 @@
 import {
   dateKey,
   foldText,
+  fontScale,
+  fontStack,
   formatClock,
   formatStatus,
   makeConfirmation,
   pendingItems,
   relativeDayLabel,
   renderMarkdown,
+  shouldShowFocusFallback,
   timeKey,
 } from './core.js';
 import { createRemote, providerInfo } from './remote.js';
@@ -51,7 +54,11 @@ const dom = {
   editor: byId('editor'),
   send: byId('btn-send'),
   today: byId('btn-today'),
+  todayLabel: byId('today-label'),
   pending: byId('btn-pending'),
+  pendingLabel: byId('pending-label'),
+  focusFallback: byId('focus-fallback'),
+  focusStart: byId('btn-focus-start'),
   openSettings: byId('btn-settings'),
   readTitle: byId('read-title'),
   readDays: byId('read-days'),
@@ -70,6 +77,9 @@ const dom = {
   setRepo: byId('set-repo'),
   setBranch: byId('set-branch'),
   setToken: byId('set-token'),
+  toggleToken: byId('btn-toggle-token'),
+  setFontFamily: byId('set-font-family'),
+  setFontSize: byId('set-font-size'),
   tokenHelp: byId('set-token-help'),
   status: byId('set-status'),
   uploadNow: byId('btn-upload-now'),
@@ -87,6 +97,8 @@ const ui = {
   syncQueued: false,
   syncTimer: null,
   toastTimer: null,
+  focusTimer: null,
+  fallbackTimer: null,
 };
 
 let ghClient = null;
@@ -99,7 +111,8 @@ function show(name) {
   for (const [key, element] of Object.entries(dom.screens)) {
     element.hidden = key !== name;
   }
-  if (name === 'input') focusEditor();
+  if (name === 'input') ensureEditorFocus();
+  updateFocusFallback();
 }
 
 function focusEditor() {
@@ -108,6 +121,52 @@ function focusEditor() {
   } catch {
     dom.editor.focus();
   }
+}
+
+/** 输入法弹出时 Android Chrome 会压缩可视视口，这是判断键盘是否真的弹出来的依据。 */
+function keyboardLikelyOpen() {
+  const viewport = globalThis.visualViewport;
+  if (!viewport) return false;
+  return window.innerHeight - viewport.height > 80;
+}
+
+function updateFocusFallback() {
+  if (!dom.focusFallback) return;
+  const shouldShow = shouldShowFocusFallback({
+    screen: ui.screen,
+    focused: document.activeElement === dom.editor,
+    keyboardOpen: keyboardLikelyOpen(),
+    sheetOpen: Boolean(document.querySelector('.sheet')),
+  });
+  dom.focusFallback.hidden = !shouldShow;
+}
+
+/**
+ * 让键盘尽量随打开一起弹出：多次重试，成功即停手。
+ * 移动端浏览器禁止无手势弹键盘时，由兜底按钮接住那一次点击。
+ */
+function ensureEditorFocus() {
+  if (ui.screen !== 'input' || document.querySelector('.sheet')) return;
+  clearTimeout(ui.focusTimer);
+  clearTimeout(ui.fallbackTimer);
+  const delays = [0, 120, 400, 900];
+  let index = 0;
+  const attempt = () => {
+    if (ui.screen !== 'input' || document.querySelector('.sheet')) return;
+    focusEditor();
+    if (document.activeElement === dom.editor || keyboardLikelyOpen()) {
+      updateFocusFallback();
+      return;
+    }
+    index += 1;
+    if (index < delays.length) {
+      ui.focusTimer = setTimeout(attempt, delays[index] - delays[index - 1]);
+    } else {
+      updateFocusFallback();
+    }
+  };
+  attempt();
+  ui.fallbackTimer = setTimeout(updateFocusFallback, 1000);
 }
 
 function toast(message, duration = 2600) {
@@ -148,10 +207,10 @@ function refreshCounts() {
   const today = dateKey();
   const count = store.dayRecords(today).length;
   ui.pending = pendingItems(store.pendingCache(), store.confirmations());
-  dom.today.textContent = `今天 ${count} 条`;
   dom.today.title = formatStatus({ recordCount: count, pendingCount: ui.pending.length });
+  if (dom.todayLabel) dom.todayLabel.textContent = `今天 ${count} 条`;
+  if (dom.pendingLabel) dom.pendingLabel.textContent = `待确认 ${ui.pending.length}`;
   if (ui.pending.length) {
-    dom.pending.textContent = `待确认 ${ui.pending.length}`;
     dom.pending.hidden = false;
   } else {
     dom.pending.hidden = true;
@@ -344,6 +403,7 @@ function openRead(date = dateKey()) {
 function closeSheet() {
   const sheet = document.querySelector('.sheet');
   if (sheet) sheet.remove();
+  updateFocusFallback();
 }
 
 function openSheet(builder) {
@@ -657,8 +717,48 @@ function openSettings() {
   dom.setBranch.value = settings.branch || 'main';
   dom.setToken.value = settings.token;
   applyProviderHints(settings.provider);
+  applyDisplaySettings();
   renderSettingsStatus();
   show('settings');
+}
+
+/** 把显示设置写到 <html> 上：正文用 rem 跟随基准字号，输入框另有下限。 */
+function applyDisplaySettings() {
+  const settings = store.settings();
+  const root = document.documentElement;
+  root.style.setProperty('--font-family', fontStack(settings.fontFamily));
+  root.style.setProperty('--font-scale', String(fontScale(settings.fontSize)));
+  if (dom.setFontFamily) dom.setFontFamily.value = settings.fontFamily;
+  if (dom.setFontSize) {
+    for (const button of dom.setFontSize.querySelectorAll('[data-size]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.size === settings.fontSize));
+    }
+  }
+}
+
+function changeFontFamily() {
+  if (!dom.setFontFamily) return;
+  store.saveSettings({ fontFamily: dom.setFontFamily.value });
+  applyDisplaySettings();
+}
+
+function changeFontSize(event) {
+  const button = event.target.closest('[data-size]');
+  if (!button) return;
+  store.saveSettings({ fontSize: button.dataset.size });
+  applyDisplaySettings();
+  toast('字号已更新');
+}
+
+function toggleTokenVisibility() {
+  if (!dom.setToken || !dom.toggleToken) return;
+  const reveal = dom.setToken.type === 'password';
+  dom.setToken.type = reveal ? 'text' : 'password';
+  dom.toggleToken.setAttribute('aria-pressed', String(reveal));
+  dom.toggleToken.setAttribute('aria-label', reveal ? '隐藏令牌' : '显示令牌');
+  dom.toggleToken.innerHTML = `<svg class="icon" aria-hidden="true"><use href="#${
+    reveal ? 'i-eye-off' : 'i-eye'
+  }"></use></svg>`;
 }
 
 async function saveSettings(event) {
@@ -821,6 +921,15 @@ function bindEvents() {
   dom.syncButton.addEventListener('click', uploadNow);
   dom.form.addEventListener('submit', saveSettings);
   dom.setProvider.addEventListener('change', () => applyProviderHints(dom.setProvider.value));
+  if (dom.setFontFamily) dom.setFontFamily.addEventListener('change', changeFontFamily);
+  if (dom.setFontSize) dom.setFontSize.addEventListener('click', changeFontSize);
+  if (dom.toggleToken) dom.toggleToken.addEventListener('click', toggleTokenVisibility);
+  if (dom.focusStart) {
+    dom.focusStart.addEventListener('click', () => {
+      focusEditor();
+      updateFocusFallback();
+    });
+  }
   dom.uploadNow.addEventListener('click', uploadNow);
   dom.sealToday.addEventListener('click', sealToday);
   dom.clear.addEventListener('click', clearLocal);
@@ -832,7 +941,7 @@ function bindEvents() {
       store.saveDraft(dom.editor.value);
       return;
     }
-    if (ui.screen === 'input') focusEditor();
+    if (ui.screen === 'input') ensureEditorFocus();
     refreshCounts();
     scheduleSync(0);
   });
@@ -846,9 +955,20 @@ function bindEvents() {
     'pointerdown',
     () => {
       if (ui.screen === 'input' && document.activeElement !== dom.editor) focusEditor();
+      updateFocusFallback();
     },
     { passive: true }
   );
+
+  window.addEventListener('pageshow', () => ensureEditorFocus());
+  window.addEventListener('focus', () => ensureEditorFocus());
+  dom.editor.addEventListener('focus', updateFocusFallback);
+  dom.editor.addEventListener('blur', () => {
+    setTimeout(updateFocusFallback, 300);
+  });
+  if (globalThis.visualViewport) {
+    globalThis.visualViewport.addEventListener('resize', updateFocusFallback);
+  }
 }
 
 function registerServiceWorker() {
@@ -870,6 +990,7 @@ function init() {
 
   refreshCounts();
   renderSettingsStatus();
+  applyDisplaySettings();
   registerServiceWorker();
 
   if (!store.configured()) {
@@ -881,7 +1002,7 @@ function init() {
   const status = store.status();
   if (status.lastError) toast(`上次同步失败：${shortError(status.lastError)}`, 4000);
   show('input');
-  focusEditor();
+  ensureEditorFocus();
   scheduleSync(400);
 }
 

@@ -344,3 +344,46 @@ export function renderMarkdown(markdown) {
   closeList();
   return html.join('\n');
 }
+
+// ------------------------------------------------------------------ 显示设置
+
+/** 字体候选：全部是设备本地字体，不下载、不联网。 */
+export const FONT_FAMILIES = {
+  system:
+    'system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+  serif: '"Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", SimSun, serif',
+  mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono CJK SC", monospace',
+};
+
+/** 字号档位：乘在基准字号（16px）与输入框字号（20px）上。 */
+export const FONT_SIZES = {
+  small: 0.92,
+  normal: 1,
+  large: 1.12,
+  xlarge: 1.24,
+};
+
+export function fontStack(family) {
+  return FONT_FAMILIES[family] ?? FONT_FAMILIES.system;
+}
+
+export function fontScale(size) {
+  return FONT_SIZES[size] ?? 1;
+}
+
+/**
+ * 是否该显示"点一下开始说话"的兜底按钮。
+ *
+ * 只有在输入页、没有浮层、且判定键盘没弹出时才显示；系统放行自动弹键盘时它不该出现。
+ */
+export function shouldShowFocusFallback({
+  screen = '',
+  focused = false,
+  keyboardOpen = false,
+  sheetOpen = false,
+} = {}) {
+  if (screen !== 'input') return false;
+  if (sheetOpen) return false;
+  if (focused || keyboardOpen) return false;
+  return true;
+}
