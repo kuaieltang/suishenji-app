@@ -196,7 +196,10 @@
               <span id="read-seal" class="summary__state">未封存 · 随时可改</span>
             </span>
             <span class="bar__spacer"></span>
-            <span id="read-chip" class="summary__chip">今天</span>
+            <button id="btn-pick-date" class="summary__pick" type="button" aria-label="选择日期">
+              <span id="read-chip">今天</span>
+              <svg class="icon summary__chevron" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
+            </button>
           </section>
 
           <p class="section-label">今天说的</p>
@@ -207,7 +210,7 @@
             <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>补记一条
           </button>
 
-          <p class="section-label">当天的整理</p>
+          <p id="read-derived-label" class="section-label">当天的整理</p>
           <section id="read-derived" class="card" hidden>
             <div id="read-derived-body" class="markdown"></div>
           </section>
@@ -352,6 +355,31 @@
           </p>
           <button id="btn-clear" class="danger" type="button">清空本机数据</button>
         </div>
+      </div>
+    </div>
+
+    <!-- 月历：选择要回看的日期 -->
+    <div id="calendar-sheet" class="sheet" hidden>
+      <div class="sheet__panel" role="dialog" aria-modal="true" aria-label="选择日期">
+        <div class="sheet__head">
+          <button id="btn-cal-prev" class="icon-button" type="button" aria-label="上个月">
+            <svg class="icon" aria-hidden="true"><use href="#i-back"></use></svg>
+          </button>
+          <span id="cal-title" class="sheet__title">2026年9月</span>
+          <button id="btn-cal-next" class="icon-button" type="button" aria-label="下个月">
+            <svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+          </button>
+          <span class="bar__spacer"></span>
+          <button id="btn-cal-today" class="pill" type="button">今天</button>
+        </div>
+        <div class="cal-weekdays" aria-hidden="true">
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+        </div>
+        <div id="cal-grid" class="cal-grid" role="grid" aria-label="日期"></div>
+        <p class="cal-legend muted small">
+          <span class="cal-legend__item"><span class="cal-dot"></span>有记录</span>
+          <span class="cal-legend__item"><span class="cal-dot cal-dot--soft"></span>只有日报</span>
+        </p>
       </div>
     </div>
 

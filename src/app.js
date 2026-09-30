@@ -7,6 +7,7 @@
 
 import {
   dateKey,
+  dateMarks,
   foldText,
   fontScale,
   fontStack,
@@ -14,12 +15,16 @@ import {
   formatStatus,
   fullDateLabel,
   makeConfirmation,
+  monthGrid,
   pendingItems,
   recentDates,
   relativeDayLabel,
   renderMarkdown,
+  shiftMonth,
   shortDateLabel,
+  stripDailyHeading,
   timeKey,
+  weekdayLabel,
 } from './core.js';
 import { createRemote, providerInfo } from './remote.js';
 import { createStore } from './store.js';
@@ -63,6 +68,8 @@ const dom = {
   readCount: byId('read-count'),
   readDate: byId('read-date'),
   readChip: byId('read-chip'),
+  readPick: byId('btn-pick-date'),
+  derivedLabel: byId('read-derived-label'),
   readDays: byId('read-days'),
   readSeal: byId('read-seal'),
   readList: byId('read-list'),
@@ -93,6 +100,12 @@ const dom = {
   menuRepoValue: byId('menu-repo-value'),
   menuDisplayValue: byId('menu-display-value'),
   menuSyncValue: byId('menu-sync-value'),
+  calSheet: byId('calendar-sheet'),
+  calTitle: byId('cal-title'),
+  calGrid: byId('cal-grid'),
+  calPrev: byId('btn-cal-prev'),
+  calNext: byId('btn-cal-next'),
+  calToday: byId('btn-cal-today'),
   uploadNow: byId('btn-upload-now'),
   sealToday: byId('btn-seal-today'),
   clear: byId('btn-clear'),
@@ -110,6 +123,8 @@ const ui = {
   toastTimer: null,
   focusTimer: null,
   settingsView: 'menu',
+  calYear: 0,
+  calMonth: 1,
 };
 
 let ghClient = null;
@@ -286,12 +301,20 @@ function bindEditor() {
 // ------------------------------------------------------------------ 回看页
 
 function dateChips() {
-  return recentDates({
+  const today = dateKey();
+  const dates = recentDates({
     records: store.records(),
     daily: store.dailyCache(),
-    today: dateKey(),
+    today,
     max: MAX_DAY_CHIPS,
   });
+  // 正在查看的那一天也放进日期条，避免"我到底在哪天"的困惑
+  if (ui.readDate && !dates.includes(ui.readDate)) {
+    dates.pop();
+    dates.push(ui.readDate);
+    dates.sort().reverse();
+  }
+  return dates;
 }
 
 function renderRead() {
@@ -304,6 +327,9 @@ function renderRead() {
   dom.readTitle.textContent = date === today ? '今天的记录' : `${shortDateLabel(date, today)}的记录`;
   if (dom.readDate) dom.readDate.textContent = fullDateLabel(date);
   if (dom.readChip) dom.readChip.textContent = relativeDayLabel(date, today);
+  if (dom.derivedLabel) {
+    dom.derivedLabel.textContent = `当天的整理 · ${date.slice(5)} ${weekdayLabel(date)}`.trim();
+  }
   if (dom.readCount) {
     dom.readCount.textContent = records.length ? String(records.length) : daily ? '—' : '0';
   }
@@ -373,7 +399,7 @@ function escapeText(text) {
 async function loadDerived(date) {
   const cached = store.dailyCache()[date];
   if (cached) {
-    dom.derivedBody.innerHTML = renderMarkdown(cached);
+    dom.derivedBody.innerHTML = renderMarkdown(stripDailyHeading(cached, date));
   } else {
     dom.derivedBody.innerHTML = '<p class="empty">这天还没有整理好的日报。</p>';
   }
@@ -381,7 +407,7 @@ async function loadDerived(date) {
   try {
     const markdown = await sync.fetchDaily(date);
     if (markdown && ui.derivedDate === date) {
-      dom.derivedBody.innerHTML = renderMarkdown(markdown);
+      dom.derivedBody.innerHTML = renderMarkdown(stripDailyHeading(markdown, date));
     }
   } catch (error) {
     if (!cached) {
@@ -397,6 +423,56 @@ function openRead(date = dateKey()) {
   ui.derivedDate = '';
   renderRead();
   show('read');
+}
+
+// ------------------------------------------------------------------ 月历
+
+function openCalendar() {
+  const [year, month] = ui.readDate.split('-').map((part) => Number(part));
+  ui.calYear = year;
+  ui.calMonth = month;
+  renderCalendar();
+  dom.calSheet.hidden = false;
+}
+
+function closeCalendar() {
+  if (dom.calSheet) dom.calSheet.hidden = true;
+}
+
+function pickDate(date) {
+  if (!date) return;
+  ui.readDate = date;
+  ui.derivedDate = '';
+  closeCalendar();
+  renderRead();
+}
+
+function renderCalendar() {
+  if (!dom.calGrid) return;
+  const year = ui.calYear;
+  const month = ui.calMonth;
+  const today = dateKey();
+  dom.calTitle.textContent = `${year}年${month}月`;
+  const marks = dateMarks({
+    records: store.records(),
+    sealed: store.sealed(),
+    daily: store.dailyCache(),
+  });
+  dom.calGrid.innerHTML = monthGrid(year, month)
+    .map((date) => {
+      if (!date) return '<span class="cal-cell cal-cell--empty"></span>';
+      const mark = marks.hasRecord.has(date) ? 'record' : marks.hasDaily.has(date) ? 'daily' : 'none';
+      const classes = ['cal-cell'];
+      if (date === today) classes.push('is-today');
+      if (date === ui.readDate) classes.push('is-selected');
+      const dot = `<span class="cal-dot${mark === 'daily' ? ' cal-dot--soft' : ''}"></span>`;
+      return `<button class="${classes.join(' ')}" type="button" data-date="${date}" data-mark="${mark}"${
+        date > today ? ' disabled' : ''
+      }>
+        <span class="cal-day">${Number(date.slice(8))}</span>${dot}
+      </button>`;
+    })
+    .join('');
 }
 
 // ------------------------------------------------------------------ 浮层
@@ -961,10 +1037,42 @@ function bindEvents() {
   dom.readList.addEventListener('click', (event) => {
     const button = event.target.closest('[data-action="record-menu"]');
     if (!button) return;
-    const uuid = button.closest('.record')?.dataset.uuid;
+    const uuid = button.closest('[data-uuid]')?.dataset.uuid;
     const record = store.dayRecords(ui.readDate).find((item) => item.uuid === uuid);
     if (record) openRecordMenu(ui.readDate, record);
   });
+
+  if (dom.readPick) dom.readPick.addEventListener('click', openCalendar);
+  if (dom.calPrev) {
+    dom.calPrev.addEventListener('click', () => {
+      const next = shiftMonth({ year: ui.calYear, month: ui.calMonth }, -1);
+      ui.calYear = next.year;
+      ui.calMonth = next.month;
+      renderCalendar();
+    });
+  }
+  if (dom.calNext) {
+    dom.calNext.addEventListener('click', () => {
+      const next = shiftMonth({ year: ui.calYear, month: ui.calMonth }, 1);
+      ui.calYear = next.year;
+      ui.calMonth = next.month;
+      renderCalendar();
+    });
+  }
+  if (dom.calToday) {
+    dom.calToday.addEventListener('click', () => pickDate(dateKey()));
+  }
+  if (dom.calGrid) {
+    dom.calGrid.addEventListener('click', (event) => {
+      const cell = event.target.closest('[data-date]');
+      if (cell) pickDate(cell.dataset.date);
+    });
+  }
+  if (dom.calSheet) {
+    dom.calSheet.addEventListener('click', (event) => {
+      if (event.target === dom.calSheet) closeCalendar();
+    });
+  }
 
   dom.append.addEventListener('click', () => {
     const date = ui.readDate;

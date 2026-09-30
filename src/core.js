@@ -340,6 +340,53 @@ export function pruneDailyCache(cache = {}, today = '', days = DAILY_CACHE_DAYS)
   return next;
 }
 
+// ------------------------------------------------------------------ 月历
+
+/** 6×7 的月历网格（周一起始），空白格为 null。 */
+export function monthGrid(year, month) {
+  const first = new Date(year, month - 1, 1, 12);
+  const offset = (first.getDay() + 6) % 7; // 周一 = 0
+  const days = new Date(year, month, 0, 12).getDate();
+  const cells = [];
+  for (let index = 0; index < offset; index += 1) cells.push(null);
+  for (let day = 1; day <= days; day += 1) {
+    cells.push(dateKey(new Date(year, month - 1, day, 12)));
+  }
+  while (cells.length < 42) cells.push(null);
+  return cells;
+}
+
+/** 月份加减，跨年安全。 */
+export function shiftMonth({ year, month }, delta) {
+  const base = new Date(year, month - 1 + delta, 1, 12);
+  return { year: base.getFullYear(), month: base.getMonth() + 1 };
+}
+
+/** 哪些日子有内容：本机记录（含已封存）与本地缓存的日报。 */
+export function dateMarks({ records = {}, sealed = {}, daily = {} } = {}) {
+  const hasRecord = new Set();
+  for (const [date, list] of Object.entries(records ?? {})) {
+    if ((list ?? []).length) hasRecord.add(date);
+  }
+  for (const date of Object.keys(sealed ?? {})) hasRecord.add(date);
+  return { hasRecord, hasDaily: new Set(Object.keys(daily ?? {})) };
+}
+
+/** 去掉日报正文里与页面重复的那行日期标题（`# 2026-09-30 日记`）。 */
+export function stripDailyHeading(markdown, date) {
+  const text = String(markdown ?? '');
+  const lines = text.split('\n');
+  const index = lines.findIndex((line) => {
+    const trimmed = line.trim();
+    if (!/^#\s/.test(trimmed)) return false;
+    return trimmed.includes(date) || /日记$/.test(trimmed);
+  });
+  if (index < 0) return text;
+  lines.splice(index, 1);
+  if ((lines[index] ?? '').trim() === '') lines.splice(index, 1);
+  return lines.join('\n');
+}
+
 function escapeHtml(text) {
   return String(text ?? '')
     .replace(/&/g, '&amp;')
