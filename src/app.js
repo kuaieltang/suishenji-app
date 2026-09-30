@@ -49,7 +49,6 @@ const dom = {
     input: byId('screen-input'),
     read: byId('screen-read'),
     confirm: byId('screen-confirm'),
-    settings: byId('screen-settings'),
   },
   editor: byId('editor'),
   send: byId('btn-send'),
@@ -81,6 +80,15 @@ const dom = {
   setFontSize: byId('set-font-size'),
   tokenHelp: byId('set-token-help'),
   status: byId('set-status'),
+  settingsSheet: byId('settings-sheet'),
+  settingsMenu: byId('settings-menu'),
+  settingsTitle: byId('settings-title'),
+  settingsBack: byId('btn-settings-back'),
+  settingsClose: byId('btn-settings-close'),
+  settingsViews: document.querySelectorAll('.settings-view'),
+  menuRepoValue: byId('menu-repo-value'),
+  menuDisplayValue: byId('menu-display-value'),
+  menuSyncValue: byId('menu-sync-value'),
   uploadNow: byId('btn-upload-now'),
   sealToday: byId('btn-seal-today'),
   clear: byId('btn-clear'),
@@ -99,6 +107,7 @@ const ui = {
   focusTimer: null,
   fallbackTimer: null,
   focusFallbackDismissed: false,
+  settingsView: 'menu',
 };
 
 let ghClient = null;
@@ -131,8 +140,10 @@ function keyboardLikelyOpen() {
 }
 
 function isTouchDevice() {
-  if ((globalThis.navigator?.maxTouchPoints ?? 0) > 0) return true;
-  return globalThis.matchMedia?.('(pointer: coarse)')?.matches ?? false;
+  // 只看主指针：手机是 coarse，带鼠标/触控板的触摸屏笔记本是 fine，不该被打扰
+  const coarse = globalThis.matchMedia?.('(pointer: coarse)');
+  if (coarse) return coarse.matches;
+  return (globalThis.navigator?.maxTouchPoints ?? 0) > 0;
 }
 
 function updateFocusFallback() {
@@ -142,7 +153,7 @@ function updateFocusFallback() {
     shouldShowFocusFallback({
       screen: ui.screen,
       keyboardOpen: keyboardLikelyOpen(),
-      sheetOpen: Boolean(document.querySelector('.sheet')),
+      sheetOpen: Boolean(document.querySelector('.sheet:not([hidden])')),
       touch: isTouchDevice(),
     });
   dom.focusFallback.hidden = !shouldShow;
@@ -153,14 +164,14 @@ function updateFocusFallback() {
  * 移动端浏览器禁止无手势弹键盘时，由兜底按钮接住那一次点击。
  */
 function ensureEditorFocus() {
-  if (ui.screen !== 'input' || document.querySelector('.sheet')) return;
+  if (ui.screen !== 'input' || document.querySelector('.sheet:not([hidden])')) return;
   clearTimeout(ui.focusTimer);
   clearTimeout(ui.fallbackTimer);
   ui.focusFallbackDismissed = false;
   const delays = [0, 120, 400, 900];
   let index = 0;
   const attempt = () => {
-    if (ui.screen !== 'input' || document.querySelector('.sheet')) return;
+    if (ui.screen !== 'input' || document.querySelector('.sheet:not([hidden])')) return;
     focusEditor();
     // 只有键盘真的弹出来才算成功：Chrome 会"聚焦成功但不弹键盘"
     if (keyboardLikelyOpen()) {
@@ -410,15 +421,14 @@ function openRead(date = dateKey()) {
 // ------------------------------------------------------------------ 浮层
 
 function closeSheet() {
-  const sheet = document.querySelector('.sheet');
-  if (sheet) sheet.remove();
+  for (const sheet of document.querySelectorAll('.sheet--dynamic')) sheet.remove();
   updateFocusFallback();
 }
 
 function openSheet(builder) {
   closeSheet();
   const sheet = document.createElement('div');
-  sheet.className = 'sheet';
+  sheet.className = 'sheet sheet--dynamic';
   const panel = document.createElement('div');
   panel.className = 'sheet__panel';
   sheet.appendChild(panel);
@@ -474,7 +484,7 @@ function openRecordMenu(date, record) {
       <button class="sheet__action" type="button" data-role="cancel">取消</button>`;
   });
 
-  const sheet = document.querySelector('.sheet');
+  const sheet = document.querySelector('.sheet--dynamic');
   sheet.addEventListener('click', (event) => {
     const role = event.target.closest('[data-role]')?.dataset.role;
     if (!role) return;
@@ -700,6 +710,10 @@ function applyProviderHints(provider) {
   }
 }
 
+const FONT_SIZE_LABELS = { small: '小', normal: '标准', large: '大', xlarge: '特大' };
+const FONT_FAMILY_LABELS = { system: '系统默认', serif: '衬线', mono: '等宽' };
+const SETTINGS_TITLES = { menu: '设置', repo: '仓库连接', display: '显示', sync: '同步', about: '关于' };
+
 function renderSettingsStatus() {
   const settings = store.settings();
   const info = providerInfo(settings.provider);
@@ -714,12 +728,32 @@ function renderSettingsStatus() {
   parts.push(status.lastSyncAt ? `上次同步：${status.lastSyncAt.replace('T', ' ')}` : '还没同步过');
   parts.push(unsealed.length ? `待上传：${unsealed.join('、')}` : '没有待上传的日子');
   if (status.lastError) parts.push(`上次错误：${status.lastError}`);
-  dom.status.textContent = parts.join('\n');
-  dom.sealToday.hidden = !store.dayRecords(dateKey()).length;
+  if (dom.status) dom.status.textContent = parts.join('\n');
+  if (dom.sealToday) dom.sealToday.hidden = !store.dayRecords(dateKey()).length;
+
+  if (dom.menuRepoValue) {
+    dom.menuRepoValue.textContent = store.configured()
+      ? `${info.label} · ${settings.repo}`
+      : '未配置';
+  }
+  if (dom.menuSyncValue) {
+    dom.menuSyncValue.textContent = status.lastSyncAt
+      ? formatClock(status.lastSyncAt)
+      : status.lastError
+        ? '有错误'
+        : '未同步';
+  }
+  if (dom.menuDisplayValue) {
+    dom.menuDisplayValue.textContent = `${FONT_SIZE_LABELS[settings.fontSize] ?? '标准'} · ${
+      FONT_FAMILY_LABELS[settings.fontFamily] ?? '系统默认'
+    }`;
+  }
 }
 
-function openSettings() {
+/** 打开设置抽屉。未配置仓库时直接落在「仓库连接」。 */
+function openSettingsSheet(view = 'menu') {
   const settings = store.settings();
+  const target = !store.configured() && view === 'menu' ? 'repo' : view;
   if (dom.setProvider) dom.setProvider.value = providerInfo(settings.provider).id;
   dom.setOwner.value = settings.owner;
   dom.setRepo.value = settings.repo;
@@ -728,7 +762,26 @@ function openSettings() {
   applyProviderHints(settings.provider);
   applyDisplaySettings();
   renderSettingsStatus();
-  show('settings');
+  dom.settingsSheet.hidden = false;
+  showSettingsView(target);
+}
+
+function showSettingsView(view) {
+  ui.settingsView = view;
+  if (dom.settingsTitle) dom.settingsTitle.textContent = SETTINGS_TITLES[view] ?? '设置';
+  if (dom.settingsBack) dom.settingsBack.hidden = view === 'menu';
+  if (dom.settingsMenu) dom.settingsMenu.hidden = view !== 'menu';
+  for (const element of dom.settingsViews) {
+    element.hidden = element.dataset.view !== view;
+  }
+  updateFocusFallback();
+}
+
+function closeSettingsSheet() {
+  if (dom.settingsSheet) dom.settingsSheet.hidden = true;
+  updateFocusFallback();
+  refreshCounts();
+  if (ui.screen === 'input') ensureEditorFocus();
 }
 
 /** 把显示设置写到 <html> 上：正文用 rem 跟随基准字号，输入框另有下限。 */
@@ -749,6 +802,7 @@ function changeFontFamily() {
   if (!dom.setFontFamily) return;
   store.saveSettings({ fontFamily: dom.setFontFamily.value });
   applyDisplaySettings();
+  renderSettingsStatus();
 }
 
 function changeFontSize(event) {
@@ -756,6 +810,7 @@ function changeFontSize(event) {
   if (!button) return;
   store.saveSettings({ fontSize: button.dataset.size });
   applyDisplaySettings();
+  renderSettingsStatus();
   toast('字号已更新');
 }
 
@@ -877,7 +932,25 @@ function bindEvents() {
     renderConfirm();
     show('confirm');
   });
-  dom.openSettings.addEventListener('click', openSettings);
+  dom.openSettings.addEventListener('click', () => openSettingsSheet('menu'));
+
+  if (dom.settingsMenu) {
+    dom.settingsMenu.addEventListener('click', (event) => {
+      const item = event.target.closest('[data-view]');
+      if (item) showSettingsView(item.dataset.view);
+    });
+  }
+  if (dom.settingsBack) {
+    dom.settingsBack.addEventListener('click', () => showSettingsView('menu'));
+  }
+  if (dom.settingsClose) {
+    dom.settingsClose.addEventListener('click', closeSettingsSheet);
+  }
+  if (dom.settingsSheet) {
+    dom.settingsSheet.addEventListener('click', (event) => {
+      if (event.target === dom.settingsSheet) closeSettingsSheet();
+    });
+  }
 
   for (const button of document.querySelectorAll('[data-action="back"]')) {
     button.addEventListener('click', () => {
@@ -939,7 +1012,6 @@ function bindEvents() {
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-      commitEntry();
       clearTimeout(draftTimer);
       store.saveDraft(dom.editor.value);
       return;
@@ -950,7 +1022,8 @@ function bindEvents() {
   });
 
   window.addEventListener('pagehide', () => {
-    commitEntry();
+    clearTimeout(draftTimer);
+    store.saveDraft(dom.editor.value);
   });
 
   // 首次点击任何位置都把焦点交给输入框（兜底：移动端未必允许自动弹键盘）
@@ -1006,7 +1079,7 @@ function init() {
   registerServiceWorker();
 
   if (!store.configured()) {
-    openSettings();
+    openSettingsSheet();
     toast('先选好托管平台，填上仓库与访问令牌', 3600);
     return;
   }
