@@ -363,6 +363,54 @@ export function parseFontSliceUrls(cssText) {
   return urls;
 }
 
+// ------------------------------------------------------------------ 用量展示
+
+/** 大数字用「万 / 亿」更好读。 */
+export function formatTokens(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return '0';
+  if (number >= 100_000_000) return `${(number / 100_000_000).toFixed(2)} 亿`;
+  if (number >= 10_000) return `${(number / 10_000).toFixed(1)} 万`;
+  return Math.round(number).toLocaleString('zh-CN');
+}
+
+/**
+ * 把电脑端生成的用量快照（derived/usage/latest.json）整理成界面要用的字段。
+ * 数据缺失时返回 null，由界面显示空态。
+ */
+export function formatUsageSummary(payload) {
+  if (!payload || typeof payload !== 'object' || !payload.totals) return null;
+  const cost = payload.cost || {};
+  const cny = Number(cost.cny) || 0;
+  const tokens = Number(payload.totals.total_tokens) || 0;
+  const toRow = (row, label) => ({
+    label,
+    tokens: Number(row?.total_tokens ?? row?.usage?.total_tokens ?? 0) || 0,
+    tokensLabel: formatTokens(row?.total_tokens ?? row?.usage?.total_tokens ?? 0),
+    cny: Number(row?.cny) || 0,
+    cnyLabel: `¥${(Number(row?.cny) || 0).toFixed(2)}`,
+  });
+
+  const usd = Number(cost.usd) || 0;
+  return {
+    month: String(payload.month || ''),
+    generatedAt: String(payload.generated_at || ''),
+    updatedLabel: String(payload.generated_at || '').replace('T', ' ').slice(0, 16),
+    tokens,
+    tokensLabel: formatTokens(tokens),
+    usd,
+    cny,
+    cnyLabel: `≈ ¥${cny.toFixed(2)}`,
+    inputLabel: formatTokens(payload.totals.input_tokens),
+    cachedLabel: formatTokens(payload.totals.cached_input_tokens),
+    outputLabel: formatTokens(payload.totals.output_tokens),
+    reasoningLabel: formatTokens(payload.totals.reasoning_output_tokens),
+    rateNote: String(cost.note || '按 DeepSeek 官方费率估算，以平台账单为准'),
+    sources: (payload.by_source || []).map((row) => toRow(row, String(row.source || '其他'))),
+    models: (payload.by_model || []).map((row) => toRow(row, String(row.model || '其他'))),
+  };
+}
+
 export function relativeDayLabel(date, today) {
   if (date === today) return '今天';
   const yesterday = new Date(`${today}T12:00:00`);
@@ -565,4 +613,3 @@ export function fontStack(family) {
 export function fontScale(size) {
   return FONT_SIZES[size] ?? 1;
 }
-

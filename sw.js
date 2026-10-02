@@ -5,7 +5,7 @@
  */
 
 // 版本号变了才会清掉旧缓存；改动前端文件时顺手加一。
-const CACHE = 'suishenji-v12';
+const CACHE = 'suishenji-v13';
 const SHELL = [
   './',
   './index.html',

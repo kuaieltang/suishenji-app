@@ -13,6 +13,7 @@ import {
   fontStack,
   formatClock,
   formatStatus,
+  formatUsageSummary,
   fullDateLabel,
   makeConfirmation,
   monthGrid,
@@ -114,6 +115,11 @@ const dom = {
   menuRepoValue: byId('menu-repo-value'),
   menuDisplayValue: byId('menu-display-value'),
   menuSyncValue: byId('menu-sync-value'),
+  menuUsageValue: byId('menu-usage-value'),
+  usageTotal: byId('usage-total'),
+  usageAmount: byId('usage-amount'),
+  usageMeta: byId('usage-meta'),
+  usageRows: byId('usage-rows'),
   calSheet: byId('calendar-sheet'),
   calTitle: byId('cal-title'),
   calGrid: byId('cal-grid'),
@@ -841,7 +847,63 @@ const FONT_FAMILY_LABELS = {
   serif: '衬线',
   mono: '等宽',
 };
-const SETTINGS_TITLES = { menu: '设置', repo: '仓库连接', display: '显示', sync: '同步', about: '关于' };
+const SETTINGS_TITLES = {
+  menu: '设置',
+  repo: '仓库连接',
+  display: '显示',
+  sync: '同步',
+  usage: '用量与费用',
+  about: '关于',
+};
+
+const USAGE_SOURCE_LABELS = {
+  automation: '随身记',
+  guardian_review: '后台复核',
+  user: '日常对话',
+  unknown: '其他',
+};
+
+/** 设置里的「用量与费用」：读电脑端生成的快照，只读展示。 */
+function renderUsage() {
+  const summary = formatUsageSummary(store.usageCache());
+  if (!summary) {
+    if (dom.menuUsageValue) dom.menuUsageValue.textContent = '暂无数据';
+    if (dom.usageTotal) dom.usageTotal.textContent = '—';
+    if (dom.usageAmount) dom.usageAmount.textContent = '还没有用量数据';
+    if (dom.usageMeta) dom.usageMeta.textContent = '电脑端下次推送后就会出现';
+    if (dom.usageRows) dom.usageRows.innerHTML = '';
+    return;
+  }
+  if (dom.menuUsageValue) {
+    dom.menuUsageValue.textContent = `${summary.cnyLabel} · ${summary.updatedLabel.slice(5, 10)}`;
+  }
+  if (dom.usageTotal) dom.usageTotal.textContent = `${summary.tokensLabel} token`;
+  if (dom.usageAmount) dom.usageAmount.textContent = summary.cnyLabel;
+  if (dom.usageMeta) {
+    dom.usageMeta.textContent =
+      `数据截至 ${summary.updatedLabel} · 输入 ${summary.inputLabel}（缓存 ${summary.cachedLabel}）` +
+      ` · 输出 ${summary.outputLabel}（推理 ${summary.reasoningLabel}）`;
+  }
+  if (!dom.usageRows) return;
+  const rows = [
+    ...summary.sources.map((row) => ({
+      label: USAGE_SOURCE_LABELS[row.label] ?? row.label,
+      value: `${row.tokensLabel} · ${row.cnyLabel}`,
+    })),
+    ...summary.models.map((row) => ({
+      label: row.label,
+      value: `${row.tokensLabel} · ${row.cnyLabel}`,
+    })),
+  ];
+  dom.usageRows.innerHTML = rows
+    .map(
+      (row) => `<div class="section-row">
+        <span class="section-row__side">${escapeText(row.label)}</span>
+        <div class="section-row__body">${escapeText(row.value)}</div>
+      </div>`
+    )
+    .join('');
+}
 
 function renderSettingsStatus() {
   const settings = store.settings();
@@ -877,6 +939,7 @@ function renderSettingsStatus() {
       FONT_FAMILY_LABELS[settings.fontFamily] ?? '系统默认'
     }`;
   }
+  renderUsage();
 }
 
 /** 打开设置抽屉。未配置仓库时直接落在「仓库连接」。 */

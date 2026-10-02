@@ -140,6 +140,12 @@
         <path d="M5 12h14" />
         <path d="M12 5v14" />
       </symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24">
+        <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+        <path d="M7 15v-4" />
+        <path d="M12 15V7" />
+        <path d="M17 15v-7" />
+      </symbol>
     </svg>
 
     <div class="app">
@@ -286,6 +292,12 @@
             <span class="menu__value"></span>
             <svg class="icon menu__arrow" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
           </button>
+          <button class="menu__item" type="button" data-view="usage">
+            <svg class="icon" aria-hidden="true"><use href="#i-chart"></use></svg>
+            <span class="menu__name">用量与费用</span>
+            <span id="menu-usage-value" class="menu__value">暂无数据</span>
+            <svg class="icon menu__arrow" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+          </button>
         </nav>
 
         <form id="settings-form" class="settings-view" data-view="repo" hidden>
@@ -379,6 +391,20 @@
             手机上只显示本机记录的原始条目；电脑上直接写进仓库的内容不会出现在这里，只会体现在每天整理好的日报里。
           </p>
           <button id="btn-clear" class="danger" type="button">清空本机数据</button>
+        </div>
+
+        <div class="settings-view" data-view="usage" hidden>
+          <div class="card usage-hero">
+            <p id="usage-total" class="usage-total">—</p>
+            <p id="usage-amount" class="usage-amount">—</p>
+            <p id="usage-meta" class="muted small"></p>
+          </div>
+          <section class="card section-card">
+            <div id="usage-rows"></div>
+          </section>
+          <p class="muted small">
+            数据由电脑端每天生成后随仓库同步，手机端只读；费用是按官方费率估算的，以 DeepSeek 平台账单为准。
+          </p>
         </div>
       </div>
     </div>

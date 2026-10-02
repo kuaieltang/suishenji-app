@@ -24,6 +24,7 @@ export const KEYS = {
   settings: 'settings',
   pending: 'cache.pending',
   daily: 'cache.daily',
+  usage: 'cache.usage',
   status: 'status',
   device: 'device',
 };
@@ -181,6 +182,10 @@ export function createStore(storage = createStorage()) {
     },
     replaceDailyCache(cache) {
       return write(KEYS.daily, cache ?? {});
+    },
+    usageCache: () => read(KEYS.usage, null),
+    saveUsageCache(payload) {
+      return write(KEYS.usage, payload ?? null);
     },
 
     // ---------------------------------------------------------------- 设置与状态

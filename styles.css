@@ -592,6 +592,29 @@ textarea {
 }
 
 /* 字体全量下载的状态与进度 */
+.usage-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  align-items: flex-start;
+  padding: 0.875rem 1rem;
+}
+
+.usage-total {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-amount {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
 .font-status {
   display: flex;
   flex-direction: column;

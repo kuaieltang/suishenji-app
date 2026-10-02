@@ -22,6 +22,7 @@ const INBOX_DIR = 'journal/inbox';
 const CONFIRM_DIR = 'journal/confirm';
 const PENDING_DIR = 'derived/pending';
 const DAILY_DIR = 'derived/daily';
+const USAGE_FILE = 'derived/usage/latest.json';
 
 const PENDING_FILE_RE = /^(\d{4}-\d{2}-\d{2})\.json$/;
 const MAX_PENDING_DAYS = 10;
@@ -143,6 +144,22 @@ export function createSync({ store, github, now = () => new Date() } = {}) {
     return file.text;
   }
 
+  /** 拉取电脑端生成的"本月用量与费用"快照（没有就跳过）。 */
+  async function fetchUsage() {
+    try {
+      const file = await github.getFile(USAGE_FILE);
+      if (!file.exists || !file.text) return null;
+      const payload = JSON.parse(file.text);
+      if (payload && typeof payload === 'object') {
+        store.saveUsageCache(payload);
+        return payload;
+      }
+    } catch {
+      /* 快照读取失败不影响同步 */
+    }
+    return null;
+  }
+
   /**
    * 拉取最近 DAILY_CACHE_DAYS 天的日报到本地，供离线回看；
    * 单天失败只跳过，最后把窗口外的旧缓存裁掉。
@@ -172,6 +189,7 @@ export function createSync({ store, github, now = () => new Date() } = {}) {
       const confirmations = await uploadConfirmations();
       await fetchPending();
       await fetchRecentDaily(today);
+      await fetchUsage();
       store.saveStatus({
         lastSyncAt: isoWithOffset(now()),
         lastError: '',
@@ -192,6 +210,7 @@ export function createSync({ store, github, now = () => new Date() } = {}) {
     fetchPending,
     fetchDaily,
     fetchRecentDaily,
+    fetchUsage,
     syncNow,
   };
 }
