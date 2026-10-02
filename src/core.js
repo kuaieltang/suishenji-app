@@ -411,6 +411,14 @@ export function formatUsageSummary(payload) {
   };
 }
 
+/**
+ * 回看页底部「原始记录」是否显示：只有本机没有这一天的记录、而日报里带原文时才显示，
+ * 这样平时不与「今天说的」重复，换设备时又不会丢掉原文。
+ */
+export function shouldShowRawRecords({ rawRows = 0, hasLocalRecords = false } = {}) {
+  return Number(rawRows) > 0 && !hasLocalRecords;
+}
+
 export function relativeDayLabel(date, today) {
   if (date === today) return '今天';
   const yesterday = new Date(`${today}T12:00:00`);

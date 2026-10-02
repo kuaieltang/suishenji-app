@@ -27,6 +27,7 @@ import {
   shortDateTime,
   shortDateLabel,
   shortTime,
+  shouldShowRawRecords,
   splitDailySections,
   stripDailySeconds,
   stripDailyHeading,
@@ -427,6 +428,11 @@ async function loadDerived(date) {
     }
   } catch (error) {
     if (!cached) {
+      dom.derived.hidden = false;
+      if (dom.derivedLabel) {
+        dom.derivedLabel.hidden = false;
+        dom.derivedLabel.textContent = `当天的整理 · ${date.slice(5)} ${weekdayLabel(date)}`.trim();
+      }
       dom.derivedBody.innerHTML = `<div class="section-row"><div class="section-row__body markdown"><p class="empty">读取失败：${escapeText(
         shortError(error?.message ?? error)
       )}</p></div></div>`;
@@ -438,13 +444,18 @@ async function loadDerived(date) {
 function renderDaily(date, markdown) {
   const cleaned = stripDailySeconds(stripDailyHeading(String(markdown ?? ''), date));
   const { sections, raw } = parseDailySections(cleaned);
+  const hasLocalRecords = store.dayRecords(date).length > 0;
 
+  // 「当天的整理」：没有内容就整节隐藏（周日整理之前通常都是空的）
+  const showSections = sections.length > 0;
   if (dom.derivedLabel) {
-    dom.derivedLabel.hidden = false;
-    dom.derivedLabel.textContent = `当天的整理 · ${date.slice(5)} ${weekdayLabel(date)}`.trim();
+    dom.derivedLabel.hidden = !showSections;
+    if (showSections) {
+      dom.derivedLabel.textContent = `当天的整理 · ${date.slice(5)} ${weekdayLabel(date)}`.trim();
+    }
   }
-  dom.derived.hidden = false;
-  dom.derivedBody.innerHTML = sections.length
+  dom.derived.hidden = !showSections;
+  dom.derivedBody.innerHTML = showSections
     ? sections
         .map(
           (section) => `<div class="section-row">
@@ -457,20 +468,23 @@ function renderDaily(date, markdown) {
           </div>`
         )
         .join('')
-    : '<div class="section-row"><div class="section-row__body markdown"><p class="empty">这天还没有整理好的日报。</p></div></div>';
+    : '';
 
   const rawRows = parseRawRows(raw);
-  if (dom.rawLabel) dom.rawLabel.hidden = !rawRows.length;
-  if (dom.raw) dom.raw.hidden = !rawRows.length;
+  const showRaw = shouldShowRawRecords({ rawRows: rawRows.length, hasLocalRecords });
+  if (dom.rawLabel) dom.rawLabel.hidden = !showRaw;
+  if (dom.raw) dom.raw.hidden = !showRaw;
   if (dom.rawBody) {
-    dom.rawBody.innerHTML = rawRows
+    dom.rawBody.innerHTML = showRaw
+      ? rawRows
       .map(
         (row) => `<div class="section-row">
           <span class="section-row__side section-row__side--time">${escapeText(row.time)}</span>
           <div class="section-row__body markdown">${renderMarkdown(row.text)}</div>
         </div>`
       )
-      .join('');
+          .join('')
+      : '';
   }
 }
 
