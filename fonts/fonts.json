@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "fonts": {
+    "lxgw.ttf": {
+      "file": "lxgw.ttf",
+      "bytes": 11685024,
+      "sha256": "3d5ca83c6c505069e172ec8489cb260f94cd3e6ad3c690a2e3672adffbeb455b",
+      "upem": 1000,
+      "hheaAscent": 911,
+      "hheaDescent": -289,
+      "faceYMin": -109,
+      "faceYMax": 823,
+      "faceHeight": 932,
+      "faceRatio": 0.932,
+      "codepoints": 19655,
+      "glyf": true
+    },
+    "misans.ttf": {
+      "file": "misans.ttf",
+      "bytes": 3471676,
+      "sha256": "3a6e41ccd0df4eb98a1551902fee0d3f0fc5f60d3725bd3584b328e84c1cf632",
+      "upem": 2048,
+      "hheaAscent": 2138,
+      "hheaDescent": -578,
+      "faceYMin": -166,
+      "faceYMax": 1776,
+      "faceHeight": 1942,
+      "faceRatio": 0.9482,
+      "codepoints": 10437,
+      "glyf": true
+    },
+    "xiaolai.ttf": {
+      "file": "xiaolai.ttf",
+      "bytes": 11536240,
+      "sha256": "e035e18e1fb3fea2089fde2e5ee50f64d4af423cd0b1a441f9587b155f45dbb4",
+      "upem": 1000,
+      "hheaAscent": 880,
+      "hheaDescent": -144,
+      "faceYMin": -98,
+      "faceYMax": 824,
+      "faceHeight": 922,
+      "faceRatio": 0.922,
+      "codepoints": 22805,
+      "glyf": true
+    }
+  }
+}
